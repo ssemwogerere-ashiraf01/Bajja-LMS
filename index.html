@@ -286,7 +286,6 @@
         <button class="btn danger" id="deleteClassBtn" style="width:100%;justify-content:center;">Delete Current Class</button>
       </div>
     </div>
-    <div class="hint">Switch between classes to manage different streams or year groups. The class code determines the ID prefix (e.g., S1 → S101, S102…). If you type a class code that already exists, "Create/Switch Class" will switch to it instead of creating a duplicate.</div>
   </div>
 
   <!-- Tabs -->
@@ -521,7 +520,6 @@
           <input type="date" id="reportDate">
         </div>
       </div>
-      <div class="hint">Select a learner, then add each A-Level subject with the marks obtained and the total marks for that assessment. Principal subjects are graded 0–5 points (A–F). General Paper and Subsidiary ICT are graded A (above Basic) or F (Basic and below).</div>
     </div>
 
     <div class="card">
@@ -556,7 +554,6 @@
       <button class="btn danger" id="resetBtn">Reset All</button>
       <input type="file" id="fileInput" accept="application/json" style="display:none;">
     </div>
-    <div class="hint">All data is now stored permanently in your Supabase cloud database and will be there whenever you reopen this app, on any device. Use <b>Backup Data</b> to download a local JSON snapshot for safekeeping, and <b>Restore Data</b> to overwrite the cloud database from a backup file.</div>
     <div class="success" id="dataMsg" style="display:none;margin-top:10px;"></div>
   </div>
 
@@ -592,11 +589,9 @@
 
 <script>
 // ========== SUPABASE CONFIGURATION ==========
-// Replace these with your Supabase project credentials
 const SUPABASE_URL = "https://dsbvxsqgehlomcrofakh.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzYnZ4c3FnZWhsb21jcm9mYWtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1Nzk1MjIsImV4cCI6MjA5OTE1NTUyMn0.NV-h8ui59guSlLOerG9l1z99akMIfYXPQav8vTqxRso";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzYnZ4c3FnZWhsb21jcm9mYWtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1Nzk1MjIsImV4cCI6MjA5OTE1NTUyMn0.NV-h8ui5gPEP9UwVpVpWMU6BdMjBKfxHl9vVZvvH7P0";
 
-// ========== SUPABASE CLIENT ==========
 let supabase = null;
 let supabaseReady = false;
 
@@ -675,35 +670,6 @@ const BANDS = {
   ],
 };
 
-function scoreOutOf3(mark, total) {
-  return ((mark / total) * 3).toFixed(2);
-}
-
-const PRINCIPAL_POINT_GRADES = { 5: 'A', 4: 'B', 3: 'C', 2: 'D', 1: 'E', 0: 'F' };
-
-function computeSubjectGrade(subject) {
-  const m = Number(subject.marks);
-  const t = Number(subject.total) || 1;
-  const pct = (m / t) * 100;
-  if (subject.type === 'subsidiary') {
-    const pass = pct >= 30;
-    return { point: pass ? 1 : 0, grade: pass ? 'A' : 'F', pct };
-  }
-  let point = Math.round((m / t) * 5);
-  point = Math.max(0, Math.min(5, point));
-  return { point, grade: PRINCIPAL_POINT_GRADES[point], pct };
-}
-
-function bandFor(pct, scale) {
-  const bands = BANDS[scale] || BANDS.cbc;
-  const p = Number(pct);
-  for (const b of bands) {
-    if (p >= b.min) return b;
-  }
-  return bands[bands.length - 1];
-}
-
-// ========== HELPERS ==========
 const $ = (id) => document.getElementById(id);
 const $$ = (sel) => document.querySelectorAll(sel);
 
@@ -731,7 +697,7 @@ function getNextLearnerId() {
 
 function updateNextIdPreview() {
   const nextId = getNextLearnerId();
-  $('nextIdPreview').textContent = nextId ? nextId : '(no class or no code)';
+  $('nextIdPreview').textContent = nextId ? nextId : '(no class)';
 }
 
 function clearErr(id) { $(id).textContent = ''; }
@@ -761,67 +727,44 @@ function downloadFile(content, filename, mime) {
 
 // ========== SUPABASE DATA OPERATIONS ==========
 
-// Load all data from Supabase
 async function loadAllData() {
   if (!supabaseReady) return false;
   showCloudStatus('Loading data from Supabase...');
   
   try {
-    // Load classes
-    const { data: classesData, error: classesError } = await supabase
-      .from('classes')
-      .select('*')
-      .order('id');
+    const { data: classesData, error: classesError } = await supabase.from('classes').select('*').order('id');
     if (classesError) throw classesError;
     classes = classesData || [];
 
-    // Load learners
-    const { data: learnersData, error: learnersError } = await supabase
-      .from('learners')
-      .select('*')
-      .order('name');
+    const { data: learnersData, error: learnersError } = await supabase.from('learners').select('*').order('name');
     if (learnersError) throw learnersError;
     learners = learnersData || [];
 
-    // Load assessments
-    const { data: assessmentsData, error: assessmentsError } = await supabase
-      .from('assessments')
-      .select('*')
-      .order('created_at');
+    const { data: assessmentsData, error: assessmentsError } = await supabase.from('assessments').select('*').order('created_at');
     if (assessmentsError) throw assessmentsError;
     assessments = assessmentsData || [];
 
-    // Load marks
-    const { data: marksData, error: marksError } = await supabase
-      .from('marks')
-      .select('*');
+    const { data: marksData, error: marksError } = await supabase.from('marks').select('*');
     if (marksError) throw marksError;
     marks = {};
     (marksData || []).forEach(m => {
       marks[`${m.assessment_id}-${m.learner_id}`] = m.mark;
     });
 
-    // Load class counters
-    const { data: countersData, error: countersError } = await supabase
-      .from('class_counters')
-      .select('*');
+    const { data: countersData, error: countersError } = await supabase.from('class_counters').select('*');
     if (countersError) throw countersError;
     classCounters = {};
     (countersData || []).forEach(c => {
       classCounters[c.class_id] = c.last_number;
     });
 
-    // Load individual reports
-    const { data: reportsData, error: reportsError } = await supabase
-      .from('individual_reports')
-      .select('*');
+    const { data: reportsData, error: reportsError } = await supabase.from('individual_reports').select('*');
     if (reportsError) throw reportsError;
     individualReports = {};
     (reportsData || []).forEach(r => {
       individualReports[r.learner_id] = r.subjects || [];
     });
 
-    // Restore current class
     const savedClassId = localStorage.getItem('currentClassId');
     if (savedClassId && classes.some(c => c.id === Number(savedClassId))) {
       currentClassId = Number(savedClassId);
@@ -841,136 +784,1000 @@ async function loadAllData() {
   }
 }
 
-// Helper to perform multiple inserts in a transaction-like manner
-async function insertMultiple(table, data) {
-  if (!supabaseReady || data.length === 0) return [];
-  const results = [];
-  for (const item of data) {
-    const { data: result, error } = await supabase
-      .from(table)
-      .insert(item)
-      .select();
-    if (error) throw error;
-    if (result && result.length > 0) results.push(result[0]);
-  }
-  return results;
-}
-
-async function deleteMultiple(table, column, values) {
-  if (!supabaseReady || values.length === 0) return;
-  const { error } = await supabase
-    .from(table)
-    .delete()
-    .in(column, values);
-  if (error) throw error;
-}
-
 // ========== SAVE FUNCTIONS ==========
 
 async function saveClass(classObj) {
   if (!supabaseReady) return;
-  const { data, error } = await supabase
-    .from('classes')
-    .upsert(classObj, { onConflict: 'id' })
-    .select();
+  const { data, error } = await supabase.from('classes').upsert(classObj, { onConflict: 'id' }).select();
   if (error) throw error;
   return data && data.length > 0 ? data[0] : classObj;
 }
 
 async function saveLearner(learnerObj) {
   if (!supabaseReady) return;
-  const { data, error } = await supabase
-    .from('learners')
-    .upsert(learnerObj, { onConflict: 'id' })
-    .select();
+  const { data, error } = await supabase.from('learners').upsert(learnerObj, { onConflict: 'id' }).select();
   if (error) throw error;
   return data && data.length > 0 ? data[0] : learnerObj;
 }
 
 async function saveAssessment(assessmentObj) {
   if (!supabaseReady) return;
-  const { data, error } = await supabase
-    .from('assessments')
-    .upsert(assessmentObj, { onConflict: 'id' })
-    .select();
+  const { data, error } = await supabase.from('assessments').upsert(assessmentObj, { onConflict: 'id' }).select();
   if (error) throw error;
   return data && data.length > 0 ? data[0] : assessmentObj;
 }
 
 async function saveMark(assessmentId, learnerId, mark) {
   if (!supabaseReady) return;
-  const { data, error } = await supabase
-    .from('marks')
-    .upsert({ assessment_id: assessmentId, learner_id: learnerId, mark: mark }, { onConflict: 'assessment_id, learner_id' })
-    .select();
+  const { data, error } = await supabase.from('marks').upsert({ assessment_id: assessmentId, learner_id: learnerId, mark: mark }, { onConflict: 'assessment_id, learner_id' }).select();
   if (error) throw error;
   return data && data.length > 0 ? data[0] : null;
 }
 
 async function saveClassCounter(classId, lastNumber) {
   if (!supabaseReady) return;
-  const { data, error } = await supabase
-    .from('class_counters')
-    .upsert({ class_id: classId, last_number: lastNumber }, { onConflict: 'class_id' })
-    .select();
+  const { data, error } = await supabase.from('class_counters').upsert({ class_id: classId, last_number: lastNumber }, { onConflict: 'class_id' }).select();
   if (error) throw error;
   return data && data.length > 0 ? data[0] : null;
 }
 
 async function saveIndividualReport(learnerId, subjects) {
   if (!supabaseReady) return;
-  const { data, error } = await supabase
-    .from('individual_reports')
-    .upsert({ learner_id: learnerId, level: 'alevel', subjects: subjects }, { onConflict: 'learner_id' })
-    .select();
+  const { data, error } = await supabase.from('individual_reports').upsert({ learner_id: learnerId, level: 'alevel', subjects: subjects }, { onConflict: 'learner_id' }).select();
   if (error) throw error;
   return data && data.length > 0 ? data[0] : null;
 }
 
 async function deleteLearnerRecords(learnerIds) {
   if (!supabaseReady || learnerIds.length === 0) return;
-  await deleteMultiple('learners', 'id', learnerIds);
+  const { error } = await supabase.from('learners').delete().in('id', learnerIds);
+  if (error) throw error;
 }
 
 async function deleteAssessmentRecords(assessmentIds) {
   if (!supabaseReady || assessmentIds.length === 0) return;
-  await deleteMultiple('assessments', 'id', assessmentIds);
+  const { error } = await supabase.from('assessments').delete().in('id', assessmentIds);
+  if (error) throw error;
 }
 
 async function deleteClassRecords(classIds) {
   if (!supabaseReady || classIds.length === 0) return;
-  await deleteMultiple('classes', 'id', classIds);
+  const { error } = await supabase.from('classes').delete().in('id', classIds);
+  if (error) throw error;
+}
+
+// ========== CLASS MANAGEMENT ==========
+function populateExistingClassSelect() {
+  const sel = $('existingClassSelect');
+  sel.innerHTML = '<option value="">-- Select a class --</option>' +
+    classes.map(c => `<option value="${c.id}" ${c.id === currentClassId ? 'selected' : ''}>${c.name} [${c.code}]</option>`).join('');
+}
+
+function updateClassBadge() {
+  const cls = getCurrentClass();
+  $('currentClassBadge').textContent = cls ? `${cls.name} [${cls.code}]` : 'No class selected';
+}
+
+async function createClassHandler() {
+  clearErr('formErr');
+  const name = $('className').value.trim();
+  const teacher = $('classTeacher').value.trim();
+  const code = $('classCode').value.trim().toUpperCase();
+
+  if (!name || !code) {
+    showErr('formErr', 'Class name and code are required.');
+    return;
+  }
+
+  const existing = classes.find(c => c.code === code);
+  if (existing) {
+    currentClassId = existing.id;
+    localStorage.setItem('currentClassId', currentClassId);
+    updateClassBadge();
+    populateExistingClassSelect();
+    updateNextIdPreview();
+    renderLearnersTable();
+    flashSuccess('addSuccess', `Switched to class: ${existing.name}`);
+    return;
+  }
+
+  try {
+    const newClass = await saveClass({
+      name,
+      code,
+      teacher,
+      created_at: new Date().toISOString(),
+    });
+    if (newClass && newClass.id) {
+      classes.push(newClass);
+      currentClassId = newClass.id;
+      classCounters[newClass.id] = 0;
+      await saveClassCounter(newClass.id, 0);
+      localStorage.setItem('currentClassId', currentClassId);
+      updateClassBadge();
+      populateExistingClassSelect();
+      updateNextIdPreview();
+      renderLearnersTable();
+      flashSuccess('addSuccess', `Class "${newClass.name}" created successfully.`);
+    }
+  } catch (e) {
+    console.error(e);
+    showErr('formErr', 'Error creating class: ' + e.message);
+  }
+}
+
+async function deleteClassHandler() {
+  if (!currentClassId) {
+    showErr('formErr', 'No class selected to delete.');
+    return;
+  }
+  const cls = getCurrentClass();
+  if (!confirm(`Delete class "${cls.name}" and all its data?`)) return;
+  try {
+    await deleteClassRecords([currentClassId]);
+    classes = classes.filter(c => c.id !== currentClassId);
+    delete classCounters[currentClassId];
+    await persistClassCounters();
+    currentClassId = classes.length > 0 ? classes[0].id : null;
+    localStorage.setItem('currentClassId', currentClassId || '');
+    updateClassBadge();
+    populateExistingClassSelect();
+    updateNextIdPreview();
+    renderLearnersTable();
+    renderAssessmentsList();
+    flashSuccess('addSuccess', 'Class deleted successfully.');
+  } catch (e) {
+    console.error(e);
+    showErr('formErr', 'Error deleting class: ' + e.message);
+  }
+}
+
+// ========== LEARNER MANAGEMENT ==========
+async function addLearnerHandler() {
+  clearErr('formErr');
+  if (!currentClassId) {
+    showErr('formErr', 'Please create or select a class first.');
+    return;
+  }
+  const name = $('learnerName').value.trim();
+  const email = $('email').value.trim();
+  const dateEnrolled = $('dateEnrolled').value;
+
+  if (!name) {
+    showErr('formErr', 'Learner name is required.');
+    return;
+  }
+
+  try {
+    const studentId = getNextLearnerId();
+    const newLearner = await saveLearner({
+      id: studentId,
+      name,
+      email,
+      class_id: currentClassId,
+      date_enrolled: dateEnrolled,
+      comment: '',
+      created_at: new Date().toISOString(),
+    });
+    if (newLearner) {
+      learners.push(newLearner);
+      classCounters[currentClassId] = (classCounters[currentClassId] || 0) + 1;
+      await saveClassCounter(currentClassId, classCounters[currentClassId]);
+      $('learnerName').value = '';
+      $('email').value = '';
+      $('dateEnrolled').value = '';
+      updateNextIdPreview();
+      renderLearnersTable();
+      populateMarksLearnerSelect();
+      populateReportLearnerSelect();
+      flashSuccess('addSuccess', `Learner "${name}" added successfully as ${studentId}`);
+    }
+  } catch (e) {
+    console.error(e);
+    showErr('formErr', 'Error adding learner: ' + e.message);
+  }
+}
+
+function renderLearnersTable() {
+  const wrap = $('learnersTableWrap');
+  const classLearners = getClassLearners();
+  
+  if (classLearners.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">No learners in this class.</div>';
+    $('editSelectedBtn').disabled = true;
+    $('deleteSelectedBtn').disabled = true;
+    $('exportLearnersCsvBtn').disabled = true;
+    return;
+  }
+
+  const searchTerm = $('searchBox').value.toLowerCase();
+  const sortBy = $('sortBy').value;
+  
+  let filtered = classLearners.filter(l => 
+    l.name.toLowerCase().includes(searchTerm) || l.id.toLowerCase().includes(searchTerm)
+  );
+
+  filtered.sort((a, b) => {
+    if (sortBy === 'name') return a.name.localeCompare(b.name);
+    if (sortBy === 'id') return a.id.localeCompare(b.id);
+    if (sortBy === 'joined') return new Date(a.date_enrolled) - new Date(b.date_enrolled);
+    return 0;
+  });
+
+  const table = `
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th class="checkbox-cell"><input type="checkbox" id="selectAllLearners"></th>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Date Enrolled</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map(l => `
+            <tr>
+              <td class="checkbox-cell"><input type="checkbox" class="learner-checkbox" value="${l.id}"></td>
+              <td>${escapeHtml(l.id)}</td>
+              <td>${escapeHtml(l.name)}</td>
+              <td>${escapeHtml(l.email || '—')}</td>
+              <td>${l.date_enrolled ? new Date(l.date_enrolled).toLocaleDateString() : '—'}</td>
+              <td>
+                <button class="action-btn" onclick="editLearner('${l.id}')">Edit</button>
+                <button class="action-btn danger" onclick="deleteLearner('${l.id}')">Delete</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  wrap.innerHTML = table;
+
+  const selectAll = $('selectAllLearners');
+  const checkboxes = $$('.learner-checkbox');
+  
+  selectAll.addEventListener('change', () => {
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateLearnersActionButtons();
+  });
+  
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', updateLearnersActionButtons);
+  });
+  
+  updateLearnersActionButtons();
+}
+
+function updateLearnersActionButtons() {
+  const selected = $$('.learner-checkbox:checked').length > 0;
+  $('editSelectedBtn').disabled = $$('.learner-checkbox:checked').length !== 1;
+  $('deleteSelectedBtn').disabled = !selected;
+  $('exportLearnersCsvBtn').disabled = getClassLearners().length === 0;
+}
+
+function editLearner(id) {
+  const learner = learners.find(l => l.id === id);
+  if (!learner) return;
+  editingLearnerId = id;
+  $('editStudentId').value = learner.id;
+  $('editLearnerName').value = learner.name;
+  $('editEmail').value = learner.email || '';
+  $('editComment').value = learner.comment || '';
+  $('editModal').classList.add('show');
+}
+
+async function saveEditHandler() {
+  if (!editingLearnerId) return;
+  const learner = learners.find(l => l.id === editingLearnerId);
+  if (!learner) return;
+  
+  learner.name = $('editLearnerName').value;
+  learner.email = $('editEmail').value;
+  learner.comment = $('editComment').value;
+  
+  try {
+    await saveLearner(learner);
+    $('editModal').classList.remove('show');
+    renderLearnersTable();
+    populateMarksLearnerSelect();
+    populateReportLearnerSelect();
+    flashSuccess('addSuccess', 'Learner updated successfully.');
+  } catch (e) {
+    console.error(e);
+    showErr('formErr', 'Error updating learner: ' + e.message);
+  }
+}
+
+async function deleteLearner(id) {
+  if (!confirm('Delete this learner and all their marks?')) return;
+  try {
+    await deleteLearnerRecords([id]);
+    learners = learners.filter(l => l.id !== id);
+    delete individualReports[id];
+    renderLearnersTable();
+    populateMarksLearnerSelect();
+    populateReportLearnerSelect();
+    flashSuccess('addSuccess', 'Learner deleted successfully.');
+  } catch (e) {
+    console.error(e);
+    showErr('formErr', 'Error deleting learner: ' + e.message);
+  }
+}
+
+function deleteSelectedLearners() {
+  const selected = $$('.learner-checkbox:checked');
+  if (selected.length === 0) {
+    showErr('formErr', 'No learners selected.');
+    return;
+  }
+  if (!confirm(`Delete ${selected.length} learner(s)?`)) return;
+  
+  const ids = Array.from(selected).map(cb => cb.value);
+  deleteLearnerRecords(ids).then(() => {
+    learners = learners.filter(l => !ids.includes(l.id));
+    ids.forEach(id => delete individualReports[id]);
+    renderLearnersTable();
+    populateMarksLearnerSelect();
+    populateReportLearnerSelect();
+    flashSuccess('addSuccess', `${ids.length} learner(s) deleted.`);
+  }).catch(e => {
+    console.error(e);
+    showErr('formErr', 'Error deleting learners: ' + e.message);
+  });
+}
+
+function exportLearnersCsv() {
+  const classLearners = getClassLearners();
+  const rows = [['ID', 'Name', 'Email', 'Date Enrolled', 'Notes']];
+  classLearners.forEach(l => {
+    rows.push([l.id, l.name, l.email || '', l.date_enrolled || '', l.comment || '']);
+  });
+  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+  downloadFile(csv, 'learners.csv', 'text/csv');
+}
+
+// ========== ASSESSMENTS ==========
+async function createAssessmentHandler() {
+  clearErr('assessmentErr');
+  if (!currentClassId) {
+    showErr('assessmentErr', 'Please create or select a class first.');
+    return;
+  }
+  const title = $('assessmentTitle').value.trim();
+  const type = $('assessmentType').value;
+  const totalMarks = Number($('totalMarks').value);
+  const weight = Number($('weight').value);
+  const dueDate = $('dueDate').value;
+  const gradeScale = $('gradeScale').value;
+
+  if (!title || totalMarks <= 0) {
+    showErr('assessmentErr', 'Assessment title and positive total marks required.');
+    return;
+  }
+
+  try {
+    const newAssessment = await saveAssessment({
+      title,
+      type,
+      total_marks: totalMarks,
+      weight,
+      due_date: dueDate,
+      grade_scale: gradeScale,
+      class_id: currentClassId,
+      created_at: new Date().toISOString(),
+    });
+    if (newAssessment && newAssessment.id) {
+      assessments.push(newAssessment);
+      $('assessmentTitle').value = '';
+      $('totalMarks').value = '60';
+      $('weight').value = '20';
+      $('dueDate').value = '';
+      renderAssessmentsList();
+      flashSuccess('assessmentErr', `Assessment "${title}" created successfully.`);
+    }
+  } catch (e) {
+    console.error(e);
+    showErr('assessmentErr', 'Error creating assessment: ' + e.message);
+  }
+}
+
+function renderAssessmentsList() {
+  const wrap = $('assessmentsListWrap');
+  const classAssessments = getClassAssessments();
+  
+  if (classAssessments.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">No assessments created yet.</div>';
+    return;
+  }
+
+  wrap.innerHTML = classAssessments.map(a => `
+    <div style="padding:12px;border:1px solid #E2E6E4;border-radius:8px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div>
+          <strong>${escapeHtml(a.title)}</strong>
+          <div style="font-size:12px;color:#6B7680;">${a.type.toUpperCase()} • ${a.total_marks} marks • ${a.weight}% weight</div>
+        </div>
+        <button class="btn secondary small" onclick="selectAssessmentForMarks(${a.id}, '${a.title}')">Enter Marks</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectAssessmentForMarks(id, title) {
+  currentMarksAssessmentId = id;
+  $('marksAssessmentTitle').textContent = title;
+  $('enterMarksCard').style.display = 'block';
+  populateMarksLearnerSelect();
+  renderMarksSummary();
+}
+
+function populateMarksLearnerSelect() {
+  const sel = $('marksLearner');
+  const classLearners = getClassLearners();
+  sel.innerHTML = '<option value="">-- Select a learner --</option>' +
+    classLearners.map(l => `<option value="${l.id}">${l.name} (${l.id})</option>`).join('');
+}
+
+async function saveMarkHandler() {
+  clearErr('markErr');
+  if (!currentMarksAssessmentId) {
+    showErr('markErr', 'No assessment selected.');
+    return;
+  }
+  const learnerId = $('marksLearner').value;
+  const marksObtained = Number($('marksObtained').value);
+
+  if (!learnerId) {
+    showErr('markErr', 'Please select a learner.');
+    return;
+  }
+  if (isNaN(marksObtained) || marksObtained < 0) {
+    showErr('markErr', 'Marks must be a non-negative number.');
+    return;
+  }
+
+  try {
+    await saveMark(currentMarksAssessmentId, learnerId, marksObtained);
+    marks[`${currentMarksAssessmentId}-${learnerId}`] = marksObtained;
+    $('marksLearner').value = '';
+    $('marksObtained').value = '';
+    renderMarksSummary();
+    flashSuccess('markSuccess', 'Mark saved successfully.');
+  } catch (e) {
+    console.error(e);
+    showErr('markErr', 'Error saving mark: ' + e.message);
+  }
+}
+
+function renderMarksSummary() {
+  const wrap = $('marksSummaryWrap');
+  if (!currentMarksAssessmentId) {
+    wrap.innerHTML = '<div class="empty-state">No assessment selected.</div>';
+    return;
+  }
+
+  const assessment = assessments.find(a => a.id === currentMarksAssessmentId);
+  if (!assessment) return;
+
+  const classLearners = getClassLearners();
+  const marksList = classLearners.map(l => {
+    const mark = marks[`${currentMarksAssessmentId}-${l.id}`] || null;
+    const pct = mark !== null ? ((mark / assessment.total_marks) * 100).toFixed(1) : 'N/A';
+    return { learner: l, mark, pct };
+  }).filter(m => m.mark !== null);
+
+  const table = `
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Learner ID</th>
+            <th>Name</th>
+            <th>Marks / ${assessment.total_marks}</th>
+            <th>%</th>
+            <th>Grade</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${marksList.map(m => {
+            const band = BANDS[assessment.grade_scale] || BANDS.cbc;
+            const pctVal = Number(m.pct);
+            const grade = band.find(b => pctVal >= b.min) || band[band.length - 1];
+            return `
+              <tr>
+                <td>${escapeHtml(m.learner.id)}</td>
+                <td>${escapeHtml(m.learner.name)}</td>
+                <td>${m.mark}</td>
+                <td>${m.pct}%</td>
+                <td><span class="grade-pill" style="background-color:${grade.color};">${grade.label}</span></td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  wrap.innerHTML = marksList.length > 0 ? table : '<div class="empty-state">No marks entered yet.</div>';
+  
+  $('downloadAssessmentPdfBtn').disabled = marksList.length === 0;
+  $('printAssessmentBtn').disabled = marksList.length === 0;
+}
+
+function printAssessmentMarks() {
+  window.print();
+}
+
+function downloadAssessmentPdf() {
+  if (!currentMarksAssessmentId) return;
+  const assessment = assessments.find(a => a.id === currentMarksAssessmentId);
+  if (!assessment) return;
+
+  const doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.text(SCHOOL_NAME, 14, 15);
+  doc.setFontSize(12);
+  doc.text(`Assessment: ${assessment.title}`, 14, 25);
+  doc.setFontSize(10);
+  
+  const classLearners = getClassLearners();
+  const tableData = [['ID', 'Name', `Marks / ${assessment.total_marks}`, '%', 'Grade']];
+  
+  classLearners.forEach(l => {
+    const mark = marks[`${currentMarksAssessmentId}-${l.id}`];
+    if (mark !== undefined) {
+      const pct = ((mark / assessment.total_marks) * 100).toFixed(1);
+      const band = BANDS[assessment.grade_scale] || BANDS.cbc;
+      const grade = band.find(b => pct >= b.min) || band[band.length - 1];
+      tableData.push([l.id, l.name, String(mark), pct + '%', grade.label]);
+    }
+  });
+
+  doc.autoTable({
+    head: [tableData[0]],
+    body: tableData.slice(1),
+    startY: 35,
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [27, 42, 74] },
+  });
+
+  doc.save(`Assessment_${assessment.title.replace(/\s+/g, '_')}.pdf`);
+}
+
+// ========== ANALYTICS ==========
+function updateAnalytics() {
+  const classAssessments = getClassAssessments();
+  const classLearners = getClassLearners();
+  
+  if (classAssessments.length === 0 || classLearners.length === 0) {
+    ['statCount', 'statAvg', 'statMedian', 'statHigh', 'statLow', 'statStdDev'].forEach(id => {
+      $(id).textContent = '0';
+    });
+    return;
+  }
+
+  const weights = {};
+  classAssessments.forEach(a => { weights[a.id] = a.weight || 0; });
+
+  const performanceScores = classLearners.map(l => {
+    let totalWeighted = 0;
+    let totalWeight = 0;
+    classAssessments.forEach(a => {
+      const mark = marks[`${a.id}-${l.id}`];
+      if (mark !== undefined) {
+        const pct = (mark / a.total_marks) * 100;
+        totalWeighted += pct * (weights[a.id] || 0);
+        totalWeight += weights[a.id] || 0;
+      }
+    });
+    return totalWeight > 0 ? totalWeighted / totalWeight : 0;
+  });
+
+  const sorted = performanceScores.slice().sort((a, b) => a - b);
+  const avg = performanceScores.reduce((a, b) => a + b, 0) / performanceScores.length;
+  const median = sorted.length % 2 === 0 ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2 : sorted[Math.floor(sorted.length / 2)];
+  const variance = performanceScores.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / performanceScores.length;
+  const stdDev = Math.sqrt(variance);
+
+  $('statCount').textContent = classLearners.length;
+  $('statAvg').textContent = avg.toFixed(1) + '%';
+  $('statMedian').textContent = median.toFixed(1) + '%';
+  $('statHigh').textContent = Math.max(...performanceScores).toFixed(1) + '%';
+  $('statLow').textContent = Math.min(...performanceScores).toFixed(1) + '%';
+  $('statStdDev').textContent = stdDev.toFixed(2);
+
+  updatePerformanceChart(classLearners, performanceScores);
+  updateGradeDistributionChart(classAssessments, classLearners);
+  
+  const hasData = classLearners.length > 0;
+  $('generatePdfReport').disabled = !hasData;
+  $('exportAllCsvBtn').disabled = !hasData;
+  $('printReport').disabled = !hasData;
+}
+
+function updatePerformanceChart(learners, scores) {
+  const ctx = $('performanceChart');
+  if (!ctx) return;
+
+  if (performanceChartInstance) performanceChartInstance.destroy();
+  
+  performanceChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: learners.map(l => l.name),
+      datasets: [{
+        label: 'Overall Performance %',
+        data: scores,
+        backgroundColor: '#1E5631',
+        borderColor: '#1B2A4A',
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { x: { max: 100 } },
+    }
+  });
+}
+
+function updateGradeDistributionChart(assessments, learners) {
+  const ctx = $('gradeDistributionChart');
+  if (!ctx) return;
+
+  const scale = assessments.length > 0 ? assessments[0].grade_scale : 'cbc';
+  const bands = BANDS[scale] || BANDS.cbc;
+  const distribution = {};
+  bands.forEach(b => distribution[b.label] = 0);
+
+  assessments.forEach(a => {
+    learners.forEach(l => {
+      const mark = marks[`${a.id}-${l.id}`];
+      if (mark !== undefined) {
+        const pct = (mark / a.total_marks) * 100;
+        const band = bands.find(b => pct >= b.min) || bands[bands.length - 1];
+        distribution[band.label]++;
+      }
+    });
+  });
+
+  if (gradeDistChartInstance) gradeDistChartInstance.destroy();
+  
+  gradeDistChartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(distribution),
+      datasets: [{
+        data: Object.values(distribution),
+        backgroundColor: bands.map(b => b.color),
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+    }
+  });
+}
+
+function generatePdfReport() {
+  const cls = getCurrentClass();
+  if (!cls) return;
+
+  const doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.text(SCHOOL_NAME, 14, 15);
+  doc.setFontSize(12);
+  doc.text(`Class Report: ${cls.name} [${cls.code}]`, 14, 25);
+  
+  const classLearners = getClassLearners();
+  const tableData = [['ID', 'Name']];
+  const classAssessments = getClassAssessments();
+  classAssessments.forEach(a => tableData[0].push(a.title.substring(0, 10)));
+  
+  classLearners.forEach(l => {
+    const row = [l.id, l.name];
+    classAssessments.forEach(a => {
+      const mark = marks[`${a.id}-${l.id}`];
+      row.push(mark !== undefined ? mark : '—');
+    });
+    tableData.push(row);
+  });
+
+  doc.autoTable({
+    head: [tableData[0]],
+    body: tableData.slice(1),
+    startY: 35,
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [27, 42, 74] },
+  });
+
+  doc.save(`ClassReport_${cls.code}.pdf`);
+}
+
+function exportAllDataCsv() {
+  const cls = getCurrentClass();
+  const classLearners = getClassLearners();
+  const classAssessments = getClassAssessments();
+  
+  const rows = [['ID', 'Name', ...classAssessments.map(a => a.title)]];
+  classLearners.forEach(l => {
+    const row = [l.id, l.name];
+    classAssessments.forEach(a => {
+      const mark = marks[`${a.id}-${l.id}`];
+      row.push(mark !== undefined ? mark : '');
+    });
+    rows.push(row);
+  });
+
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  downloadFile(csv, `ClassData_${cls.code}.csv`, 'text/csv');
+}
+
+function printReport() {
+  window.print();
+}
+
+// ========== INDIVIDUAL REPORT ==========
+function populateReportLearnerSelect() {
+  const sel = $('reportLearnerSelect');
+  const classLearners = getClassLearners();
+  sel.innerHTML = '<option value="">-- Select a learner --</option>' +
+    classLearners.map(l => `<option value="${l.id}">${l.name} (${l.id})</option>`).join('');
+}
+
+function handleReportLearnerChange() {
+  currentReportLearnerId = $('reportLearnerSelect').value;
+  reportSubjects = individualReports[currentReportLearnerId] || [];
+  renderSubjectRows();
+}
+
+function renderSubjectRows() {
+  const wrap = $('subjectRowsWrap');
+  if (!currentReportLearnerId) {
+    wrap.innerHTML = '<div class="empty-state">Select a learner to begin adding subjects.</div>';
+    return;
+  }
+
+  wrap.innerHTML = reportSubjects.map((s, i) => `
+    <div style="padding:12px;border:1px solid #E2E6E4;border-radius:8px;margin-bottom:10px;display:grid;grid-template-columns:1fr 1fr 1fr 80px;gap:10px;align-items:center;">
+      <input type="text" placeholder="Subject name" value="${s.name || ''}" onchange="updateSubject(${i}, 'name', this.value)">
+      <input type="text" placeholder="Type (principal/subsidiary)" value="${s.type || 'principal'}" onchange="updateSubject(${i}, 'type', this.value)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">
+        <input type="number" placeholder="Marks" value="${s.marks || ''}" onchange="updateSubject(${i}, 'marks', this.value)">
+        <input type="number" placeholder="Total" value="${s.total || ''}" onchange="updateSubject(${i}, 'total', this.value)">
+      </div>
+      <button class="action-btn danger" onclick="removeSubject(${i})">Remove</button>
+    </div>
+  `).join('');
+}
+
+function updateSubject(index, field, value) {
+  if (index >= 0 && index < reportSubjects.length) {
+    reportSubjects[index][field] = field === 'marks' || field === 'total' ? Number(value) : value;
+  }
+}
+
+function removeSubject(index) {
+  reportSubjects.splice(index, 1);
+  renderSubjectRows();
+}
+
+function addSubjectRow() {
+  if (!currentReportLearnerId) {
+    showErr('formErr', 'Select a learner first.');
+    return;
+  }
+  reportSubjects.push({ name: '', type: 'principal', marks: 0, total: 100 });
+  renderSubjectRows();
+}
+
+async function generateIndividualReportHandler() {
+  if (!currentReportLearnerId) {
+    showErr('formErr', 'Select a learner.');
+    return;
+  }
+
+  if (reportSubjects.length === 0) {
+    showErr('formErr', 'Add at least one subject.');
+    return;
+  }
+
+  await saveIndividualReport(currentReportLearnerId, reportSubjects);
+  individualReports[currentReportLearnerId] = reportSubjects;
+
+  const learner = learners.find(l => l.id === currentReportLearnerId);
+  const reportDate = $('reportDate').value || new Date().toLocaleDateString();
+
+  let totalPoints = 0;
+  let totalPrincipal = 0;
+  
+  const subjects = reportSubjects.map(s => {
+    const marks = Number(s.marks) || 0;
+    const total = Number(s.total) || 1;
+    const pct = (marks / total) * 100;
+    let point = 0;
+    let grade = 'F';
+
+    if (s.type === 'subsidiary') {
+      grade = pct >= 30 ? 'A' : 'F';
+      point = pct >= 30 ? 1 : 0;
+    } else {
+      point = Math.round((marks / total) * 5);
+      point = Math.max(0, Math.min(5, point));
+      grade = ['F', 'E', 'D', 'C', 'B', 'A'][point];
+      totalPoints += point;
+      totalPrincipal++;
+    }
+
+    return {
+      name: s.name,
+      type: s.type,
+      marks: marks + '/' + total,
+      pct: pct.toFixed(1) + '%',
+      grade: grade,
+      point: point,
+    };
+  });
+
+  const avgPoint = totalPrincipal > 0 ? (totalPoints / totalPrincipal).toFixed(2) : 0;
+
+  const html = `
+    <h3>Report for ${escapeHtml(learner.name)} (${escapeHtml(learner.id)})</h3>
+    <p><strong>Date:</strong> ${reportDate}</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>Type</th>
+            <th>Marks</th>
+            <th>%</th>
+            <th>Grade</th>
+            <th>Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${subjects.map(s => `
+            <tr>
+              <td>${escapeHtml(s.name)}</td>
+              <td>${s.type}</td>
+              <td>${s.marks}</td>
+              <td>${s.pct}</td>
+              <td><span class="grade-pill" style="background-color:${GREEN};">${s.grade}</span></td>
+              <td>${s.point}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:16px;padding:12px;background:#F6F8F7;border-radius:8px;">
+      <strong>Average Points (Principal Subjects):</strong> ${avgPoint}
+    </div>
+  `;
+
+  lastIndividualReport = { learner, reportDate, subjects, avgPoint };
+  $('individualReportSummaryWrap').innerHTML = html;
+  $('downloadIndividualReportPdfBtn').disabled = false;
+  $('printIndividualReportBtn').disabled = false;
+}
+
+function downloadIndividualReportPdf() {
+  if (!lastIndividualReport) return;
+  const { learner, reportDate, subjects, avgPoint } = lastIndividualReport;
+
+  const doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.text(SCHOOL_NAME, 14, 15);
+  doc.setFontSize(12);
+  doc.text(`Individual Report: ${learner.name}`, 14, 25);
+  doc.setFontSize(10);
+  doc.text(`Date: ${reportDate}`, 14, 32);
+
+  const tableData = [['Subject', 'Type', 'Marks', '%', 'Grade', 'Points']];
+  subjects.forEach(s => {
+    tableData.push([s.name, s.type, s.marks, s.pct, s.grade, s.point]);
+  });
+
+  doc.autoTable({
+    head: [tableData[0]],
+    body: tableData.slice(1),
+    startY: 40,
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [27, 42, 74] },
+  });
+
+  doc.save(`IndividualReport_${learner.id}.pdf`);
+}
+
+function printIndividualReport() {
+  window.print();
+}
+
+// ========== DATA MANAGEMENT ==========
+function backupData() {
+  const backup = {
+    classes,
+    learners,
+    assessments,
+    marks,
+    classCounters,
+    individualReports,
+  };
+  downloadFile(JSON.stringify(backup, null, 2), 'lms_backup.json', 'application/json');
+  flashSuccess('dataMsg', 'Data backed up successfully.');
+}
+
+function restoreData() {
+  $('fileInput').click();
+}
+
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const backup = JSON.parse(e.target.result);
+      classes = backup.classes || [];
+      learners = backup.learners || [];
+      assessments = backup.assessments || [];
+      marks = backup.marks || {};
+      classCounters = backup.classCounters || {};
+      individualReports = backup.individualReports || {};
+      
+      currentClassId = classes.length > 0 ? classes[0].id : null;
+      await persistClassCounters();
+      updateAllUI();
+      flashSuccess('dataMsg', 'Data restored successfully.');
+    } catch (e) {
+      console.error(e);
+      showErr('dataMsg', 'Error restoring data: ' + e.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function resetAllData() {
+  if (!confirm('This will delete ALL data. Are you sure?')) return;
+  try {
+    await deleteClassRecords(classes.map(c => c.id));
+    await deleteLearnerRecords(learners.map(l => l.id));
+    await deleteAssessmentRecords(assessments.map(a => a.id));
+    
+    classes = [];
+    learners = [];
+    assessments = [];
+    marks = {};
+    classCounters = {};
+    individualReports = {};
+    currentClassId = null;
+    localStorage.removeItem('currentClassId');
+    
+    updateAllUI();
+    flashSuccess('dataMsg', 'All data reset.');
+  } catch (e) {
+    console.error(e);
+    showErr('dataMsg', 'Error resetting data: ' + e.message);
+  }
+}
+
+function updateAllUI() {
+  updateClassBadge();
+  populateExistingClassSelect();
+  updateNextIdPreview();
+  renderLearnersTable();
+  renderAssessmentsList();
+  populateMarksLearnerSelect();
+  populateReportLearnerSelect();
+  updateAnalytics();
 }
 
 // ========== PERSIST HELPERS ==========
-
-async function persistLearners() {
-  if (!supabaseReady) return;
-  try {
-    // We'll handle this in individual operations
-  } catch (e) {
-    console.error('Error persisting learners:', e);
-  }
-}
-
-async function persistAssessments() {
-  if (!supabaseReady) return;
-  try {
-    // We'll handle this in individual operations
-  } catch (e) {
-    console.error('Error persisting assessments:', e);
-  }
-}
-
-async function persistMarks() {
-  if (!supabaseReady) return;
-  try {
-    // We'll handle this in individual operations
-  } catch (e) {
-    console.error('Error persisting marks:', e);
-  }
-}
-
 async function persistClassCounters() {
   if (!supabaseReady) return;
   try {
@@ -982,1183 +1789,70 @@ async function persistClassCounters() {
   }
 }
 
-async function persistIndividualReports() {
-  if (!supabaseReady) return;
-  try {
-    for (const [learnerId, subjects] of Object.entries(individualReports)) {
-      await saveIndividualReport(learnerId, subjects);
-    }
-  } catch (e) {
-    console.error('Error persisting individual reports:', e);
+// ========== EVENT LISTENERS ==========
+document.addEventListener('DOMContentLoaded', async () => {
+  if (initSupabase()) {
+    await loadAllData();
+    updateAllUI();
   }
-}
 
-// ========== CLASS MANAGEMENT ==========
-function populateExistingClassSelect() {
-  const sel = $('existingClassSelect');
-  sel.innerHTML = '<option value="">-- Select a class --</option>' +
-    classes.map(c => `<option value="${c.id}" ${c.id === currentClassId ? 'selected' : ''}>${c.name} [${c.code}]</option>`).join('');
-}
-
-function renderClasses() {
-  const cls = getCurrentClass();
-  if (cls) {
-    $('currentClassBadge').textContent = `${cls.name} (${cls.teacher || 'No teacher'}) [${cls.code}]`;
-    $('className').value = cls.name;
-    $('classTeacher').value = cls.teacher || '';
-    $('classCode').value = cls.code;
-  } else {
-    $('currentClassBadge').textContent = 'No class selected';
-  }
-  populateExistingClassSelect();
-  updateNextIdPreview();
-  $('deleteClassBtn').disabled = !cls;
-}
-
-async function createOrSwitchClass() {
-  const name = $('className').value.trim();
-  const teacher = $('classTeacher').value.trim();
-  const code = $('classCode').value.trim().toUpperCase();
-  if (!name || !code) {
-    alert('Please enter a class name and class code (e.g., S1)');
-    return;
-  }
-  
-  const existing = classes.find(c => c.code === code);
-  if (existing) {
-    currentClassId = existing.id;
-    existing.name = name;
-    existing.teacher = teacher;
-    try {
-      await saveClass(existing);
-    } catch (e) {
-      console.error('Error updating class:', e);
-      alert('Error updating class. Please try again.');
-      return;
-    }
-  } else {
-    const classObj = { id: Date.now(), name, teacher, code, created_at: new Date().toISOString() };
-    try {
-      const saved = await saveClass(classObj);
-      classes.push(saved);
-      currentClassId = saved.id;
-      if (!classCounters[currentClassId]) {
-        classCounters[currentClassId] = 0;
-        await saveClassCounter(currentClassId, 0);
-      }
-    } catch (e) {
-      console.error('Error creating class:', e);
-      alert('Error creating class. Please try again.');
-      return;
-    }
-  }
-  
-  localStorage.setItem('currentClassId', String(currentClassId));
-  renderClasses();
-  renderLearners();
-  renderAssessments();
-  renderAnalytics();
-  updateGlobalButtons();
-}
-
-function switchToClassId(id) {
-  if (!id) return;
-  currentClassId = Number(id);
-  localStorage.setItem('currentClassId', String(currentClassId));
-  renderClasses();
-  renderLearners();
-  renderAssessments();
-  hideEnterMarksCard();
-  renderAnalytics();
-  updateGlobalButtons();
-}
-
-async function deleteCurrentClass() {
-  const cls = getCurrentClass();
-  if (!cls) return;
-  if (!confirm(`Delete class "${cls.name}" [${cls.code}]? This will remove all its learners, assessments, and marks. This cannot be undone.`)) return;
-  
-  const classId = cls.id;
-  const assessIds = assessments.filter(a => a.class_id === classId).map(a => a.id);
-  const learnerIds = learners.filter(l => l.class_id === classId).map(l => l.id);
-  
-  try {
-    // Delete marks for this class (via cascade)
-    // Delete assessments (cascade will delete marks)
-    if (assessIds.length > 0) {
-      await deleteMultiple('assessments', 'id', assessIds);
-    }
-    // Delete learners (cascade will delete marks and individual reports)
-    if (learnerIds.length > 0) {
-      await deleteMultiple('learners', 'id', learnerIds);
-    }
-    // Delete class counters
-    await deleteMultiple('class_counters', 'class_id', [classId]);
-    // Delete class
-    await deleteMultiple('classes', 'id', [classId]);
-    
-    // Update local state
-    assessments = assessments.filter(a => a.class_id !== classId);
-    learners = learners.filter(l => l.class_id !== classId);
-    Object.keys(marks).forEach(key => {
-      const assessId = key.split('-')[0];
-      if (assessIds.includes(assessId) || assessIds.map(String).includes(assessId)) {
-        delete marks[key];
-      }
-    });
-    delete classCounters[classId];
-    classes = classes.filter(c => c.id !== classId);
-    learnerIds.forEach(id => delete individualReports[id]);
-    currentClassId = classes.length ? classes[0].id : null;
-    localStorage.setItem('currentClassId', String(currentClassId));
-    renderClasses();
-    renderLearners();
-    renderAssessments();
-    hideEnterMarksCard();
-    renderAnalytics();
-    updateGlobalButtons();
-  } catch (e) {
-    console.error('Error deleting class:', e);
-    alert('Error deleting class. Please try again.');
-  }
-}
-
-// ========== LEARNER MANAGEMENT ==========
-function renderLearners() {
-  const list = getClassLearners();
-  populateReportLearnerSelect();
-  if (!currentClassId) {
-    $('learnersTableWrap').innerHTML = '<div class="empty-state">Create or select a class first.</div>';
-    updateButtons();
-    return;
-  }
-  applySearchAndSort(list);
-}
-
-function applySearchAndSort(baseList) {
-  const query = ($('searchBox').value || '').trim().toLowerCase();
-  const sortBy = $('sortBy').value;
-  let list = baseList.slice();
-  if (query) {
-    list = list.filter(l => l.name.toLowerCase().includes(query) || l.id.toLowerCase().includes(query));
-  }
-  list.sort((a, b) => {
-    if (sortBy === 'name') return a.name.localeCompare(b.name);
-    if (sortBy === 'id') return a.id.localeCompare(b.id);
-    if (sortBy === 'joined') return new Date(a.joined || 0) - new Date(b.joined || 0);
-    return 0;
-  });
-  renderLearnersTable(list);
-}
-
-function renderLearnersTable(list) {
-  if (list.length === 0) {
-    $('learnersTableWrap').innerHTML = '<div class="empty-state">No learners found.</div>';
-    updateButtons();
-    return;
-  }
-  const rows = list.map(l => `
-    <tr>
-      <td><input type="checkbox" class="learner-checkbox" value="${l.id}"></td>
-      <td>${l.id}</td>
-      <td>${escapeHtml(l.name)}</td>
-      <td>${l.email ? escapeHtml(l.email) : '—'}</td>
-      <td>${l.joined || '—'}</td>
-      <td><button class="action-btn" onclick="editLearner('${l.id}')">Edit</button> <button class="action-btn danger" onclick="deleteLearner('${l.id}')">Delete</button></td>
-    </tr>
-  `).join('');
-
-  $('learnersTableWrap').innerHTML = `
-    <div class="table-wrapper">
-      <table>
-        <thead><tr><th class="checkbox-cell"><input type="checkbox" id="selectAll"></th><th>ID</th><th>Name</th><th>Email</th><th>Joined</th><th>Actions</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
-
-  attachSelectAll();
-  attachCheckboxListeners();
-  updateButtons();
-}
-
-function attachSelectAll() {
-  const sel = $('selectAll');
-  if (sel) {
-    sel.addEventListener('change', (e) => {
-      $$('.learner-checkbox').forEach(cb => cb.checked = e.target.checked);
-      updateButtons();
-    });
-  }
-}
-
-function attachCheckboxListeners() {
-  $$('.learner-checkbox').forEach(cb => cb.addEventListener('change', updateButtons));
-}
-
-function updateButtons() {
-  const checkedBoxes = $$('.learner-checkbox:checked');
-  $('deleteSelectedBtn').disabled = checkedBoxes.length === 0;
-  $('editSelectedBtn').disabled = checkedBoxes.length !== 1;
-  $('exportLearnersCsvBtn').disabled = getClassLearners().length === 0;
-}
-
-async function addLearner() {
-  clearErr('formErr');
-  if (!currentClassId) {
-    showErr('formErr', 'Please create or select a class first.');
-    return;
-  }
-  const name = $('learnerName').value.trim();
-  const email = $('email').value.trim();
-  const joined = $('dateEnrolled').value;
-  if (!name) {
-    showErr('formErr', 'Please enter the learner\'s full name.');
-    return;
-  }
-  const id = getNextLearnerId();
-  const learner = { id, class_id: currentClassId, name, email, joined: joined || new Date().toISOString().slice(0, 10) };
-  
-  try {
-    await saveLearner(learner);
-    learners.push(learner);
-    classCounters[currentClassId] = (classCounters[currentClassId] || 0) + 1;
-    await saveClassCounter(currentClassId, classCounters[currentClassId]);
-    $('learnerName').value = '';
-    $('email').value = '';
-    $('dateEnrolled').value = '';
-    updateNextIdPreview();
-    renderLearners();
-    renderAnalytics();
-    updateGlobalButtons();
-    flashSuccess('addSuccess', `Learner ${name} added with ID ${id}.`);
-  } catch (e) {
-    console.error('Error adding learner:', e);
-    showErr('formErr', 'Error adding learner: ' + e.message);
-  }
-}
-
-function editLearner(id) {
-  const learner = learners.find(l => l.id === id && l.class_id === currentClassId);
-  if (!learner) return;
-  editingLearnerId = id;
-  $('editStudentId').value = learner.id;
-  $('editLearnerName').value = learner.name;
-  $('editEmail').value = learner.email || '';
-  $('editComment').value = learner.comment || '';
-  $('editModal').classList.add('show');
-}
-
-function editSelectedLearner() {
-  const checked = $$('.learner-checkbox:checked');
-  if (checked.length !== 1) return;
-  editLearner(checked[0].value);
-}
-
-async function saveLearnerEdit() {
-  const learner = learners.find(l => l.id === editingLearnerId);
-  if (!learner) { closeEditModal(); return; }
-  const name = $('editLearnerName').value.trim();
-  if (!name) {
-    alert('Name cannot be empty.');
-    return;
-  }
-  learner.name = name;
-  learner.email = $('editEmail').value.trim();
-  learner.comment = $('editComment').value.trim();
-  try {
-    await saveLearner(learner);
-    closeEditModal();
-    renderLearners();
-  } catch (e) {
-    console.error('Error updating learner:', e);
-    alert('Error updating learner. Please try again.');
-  }
-}
-
-function closeEditModal() {
-  $('editModal').classList.remove('show');
-  editingLearnerId = null;
-}
-
-async function deleteLearner(id) {
-  const learner = learners.find(l => l.id === id);
-  if (!learner) return;
-  if (!confirm(`Delete learner ${learner.name} (${id})? Their marks in all assessments will also be removed.`)) return;
-  
-  try {
-    await deleteLearnerRecords([id]);
-    learners = learners.filter(l => l.id !== id);
-    Object.keys(marks).forEach(key => {
-      if (key.endsWith(`-${id}`)) delete marks[key];
-    });
-    delete individualReports[id];
-    if (currentReportLearnerId === id) selectReportLearner('');
-    renderLearners();
-    renderAssessments();
-    if (currentMarksAssessmentId) renderMarksSummary(currentMarksAssessmentId);
-    renderAnalytics();
-    updateGlobalButtons();
-  } catch (e) {
-    console.error('Error deleting learner:', e);
-    alert('Error deleting learner. Please try again.');
-  }
-}
-
-async function deleteSelectedLearners() {
-  const checked = Array.from($$('.learner-checkbox:checked')).map(cb => cb.value);
-  if (checked.length === 0) return;
-  if (!confirm(`Delete ${checked.length} selected learner(s)? Their marks will also be removed.`)) return;
-  
-  try {
-    await deleteLearnerRecords(checked);
-    learners = learners.filter(l => !checked.includes(l.id));
-    Object.keys(marks).forEach(key => {
-      const learnerId = key.split('-')[1];
-      if (checked.includes(learnerId)) delete marks[key];
-    });
-    checked.forEach(id => delete individualReports[id]);
-    if (checked.includes(currentReportLearnerId)) selectReportLearner('');
-    renderLearners();
-    renderAssessments();
-    if (currentMarksAssessmentId) renderMarksSummary(currentMarksAssessmentId);
-    renderAnalytics();
-    updateGlobalButtons();
-  } catch (e) {
-    console.error('Error deleting selected learners:', e);
-    alert('Error deleting selected learners. Please try again.');
-  }
-}
-
-function exportLearnersCsv() {
-  const list = getClassLearners();
-  if (list.length === 0) return;
-  const cls = getCurrentClass();
-  let csv = 'Student ID,Full Name,Email,Date Enrolled\n';
-  list.forEach(l => {
-    csv += `${l.id},"${(l.name || '').replace(/"/g, '""')}",${l.email || ''},${l.joined || ''}\n`;
-  });
-  downloadFile(csv, `${cls ? cls.code : 'class'}_learners.csv`, 'text/csv');
-}
-
-// ========== ASSESSMENTS ==========
-async function createAssessment() {
-  clearErr('assessmentErr');
-  if (!currentClassId) {
-    showErr('assessmentErr', 'Please create or select a class first.');
-    return;
-  }
-  const title = $('assessmentTitle').value.trim();
-  const type = $('assessmentType').value;
-  const total = Number($('totalMarks').value);
-  const weight = Number($('weight').value);
-  const due = $('dueDate').value;
-  const scale = $('gradeScale').value;
-
-  if (!title) { showErr('assessmentErr', 'Please enter an assessment title.'); return; }
-  if (!total || total <= 0) { showErr('assessmentErr', 'Total marks must be a positive number.'); return; }
-  if (weight < 0 || weight > 100) { showErr('assessmentErr', 'Weight must be between 0 and 100.'); return; }
-
-  const assessment = { id: String(Date.now()), class_id: currentClassId, title, type, total, weight, due, scale };
-  
-  try {
-    await saveAssessment(assessment);
-    assessments.push(assessment);
-    $('assessmentTitle').value = '';
-    $('totalMarks').value = 60;
-    $('weight').value = 20;
-    $('dueDate').value = '';
-    renderAssessments();
-    renderAnalytics();
-    updateGlobalButtons();
-  } catch (e) {
-    console.error('Error creating assessment:', e);
-    showErr('assessmentErr', 'Error creating assessment: ' + e.message);
-  }
-}
-
-function renderAssessments() {
-  const list = getClassAssessments();
-  if (list.length === 0) {
-    $('assessmentsListWrap').innerHTML = '<div class="empty-state">No assessments created yet.</div>';
-    return;
-  }
-  const classLearners = getClassLearners();
-  const html = list.map(a => {
-    const marksCount = classLearners.filter(l => marks[`${a.id}-${l.id}`] !== undefined).length;
-    const totalLearners = classLearners.length;
-    const progress = `${marksCount}/${totalLearners}`;
-    return `
-      <div style="padding:12px;border:1px solid #D6DBE0;border-radius:8px;margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-          <div>
-            <strong>${escapeHtml(a.title)}</strong> (${a.type}) — ${a.total} marks | Weight: ${a.weight}%
-            <br><small style="color:#6B7680;">Due: ${a.due || 'No date'} | Marks entered: ${progress}</small>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn small" onclick="openMarkEntry('${a.id}')">Enter Marks</button>
-            <button class="btn small secondary" onclick="generateAssessmentPdf('${a.id}')">Download PDF</button>
-            <button class="btn small danger" onclick="deleteAssessment('${a.id}')">Delete</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-  $('assessmentsListWrap').innerHTML = html;
-}
-
-async function deleteAssessment(id) {
-  const assess = assessments.find(a => a.id === id);
-  if (!assess) return;
-  if (!confirm(`Delete assessment "${assess.title}"? All marks for it will be removed.`)) return;
-  
-  try {
-    await deleteAssessmentRecords([id]);
-    assessments = assessments.filter(a => a.id !== id);
-    Object.keys(marks).forEach(key => {
-      if (key.startsWith(`${id}-`)) delete marks[key];
-    });
-    renderAssessments();
-    if (currentMarksAssessmentId === id) hideEnterMarksCard();
-    renderAnalytics();
-    updateGlobalButtons();
-  } catch (e) {
-    console.error('Error deleting assessment:', e);
-    alert('Error deleting assessment. Please try again.');
-  }
-}
-
-function openMarkEntry(assessId) {
-  const assess = assessments.find(a => a.id === assessId);
-  if (!assess) return;
-  currentMarksAssessmentId = assessId;
-  $('enterMarksCard').style.display = 'block';
-  $('marksAssessmentTitle').textContent = `${assess.title} (out of ${assess.total})`;
-  renderMarksLearnerSelect();
-  $('marksObtained').value = '';
-  clearErr('markErr');
-  renderMarksSummary(assessId);
-  $('enterMarksCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function hideEnterMarksCard() {
-  currentMarksAssessmentId = null;
-  $('enterMarksCard').style.display = 'none';
-}
-
-function renderMarksLearnerSelect() {
-  const sel = $('marksLearner');
-  const list = getClassLearners();
-  sel.innerHTML = '<option value="">-- Select a learner --</option>' + list.map(l =>
-    `<option value="${l.id}">${escapeHtml(l.name)} (${l.id})</option>`
-  ).join('');
-}
-
-async function saveMark() {
-  clearErr('markErr');
-  const assessId = currentMarksAssessmentId;
-  const assess = assessments.find(a => a.id === assessId);
-  if (!assess) return;
-  const learnerId = $('marksLearner').value;
-  const markVal = Number($('marksObtained').value);
-  if (!learnerId) { showErr('markErr', 'Please select a learner.'); return; }
-  if ($('marksObtained').value === '' || isNaN(markVal) || markVal < 0) {
-    showErr('markErr', 'Please enter a valid mark.');
-    return;
-  }
-  if (markVal > assess.total) {
-    showErr('markErr', `Mark cannot exceed the total of ${assess.total}.`);
-    return;
-  }
-  
-  try {
-    await saveMark(assessId, learnerId, markVal);
-    marks[`${assessId}-${learnerId}`] = markVal;
-    $('marksObtained').value = '';
-    $('marksLearner').value = '';
-    renderMarksSummary(assessId);
-    renderAssessments();
-    renderAnalytics();
-    updateGlobalButtons();
-    flashSuccess('markSuccess', 'Mark saved.');
-  } catch (e) {
-    console.error('Error saving mark:', e);
-    showErr('markErr', 'Error saving mark: ' + e.message);
-  }
-}
-
-async function deleteMark(assessId, learnerId) {
-  if (!supabaseReady) return;
-  try {
-    const { error } = await supabase
-      .from('marks')
-      .delete()
-      .eq('assessment_id', assessId)
-      .eq('learner_id', learnerId);
-    if (error) throw error;
-    delete marks[`${assessId}-${learnerId}`];
-    renderMarksSummary(assessId);
-    renderAssessments();
-    renderAnalytics();
-    updateGlobalButtons();
-  } catch (e) {
-    console.error('Error deleting mark:', e);
-    alert('Error deleting mark. Please try again.');
-  }
-}
-
-function renderMarksSummary(assessId) {
-  const assess = assessments.find(a => a.id === assessId);
-  if (!assess) return;
-  const classLearners = getClassLearners();
-  const learnersWithMarks = classLearners.filter(l => marks[`${assessId}-${l.id}`] !== undefined).map(l => ({
-    ...l,
-    mark: marks[`${assessId}-${l.id}`]
-  }));
-  const markPcts = learnersWithMarks.map(l => (l.mark / assess.total) * 100);
-  const avg = markPcts.length ? (markPcts.reduce((a, b) => a + b, 0) / markPcts.length).toFixed(1) : 0;
-  const html = learnersWithMarks.map(l => {
-    const pct = ((l.mark / assess.total) * 100).toFixed(1);
-    const band = bandFor(pct, assess.scale);
-    const out3 = scoreOutOf3(l.mark, assess.total);
-    return `
-      <tr>
-        <td>${escapeHtml(l.name)}</td>
-        <td>${l.mark} / ${assess.total}</td>
-        <td>${pct}%</td>
-        <td>${out3} / 3</td>
-        <td><span class="grade-pill" style="background:${band.color}">${band.label}</span></td>
-        <td><button class="action-btn danger" onclick="deleteMark('${assessId}','${l.id}')">Delete</button></td>
-      </tr>
-    `;
-  }).join('');
-  $('marksSummaryWrap').innerHTML = learnersWithMarks.length > 0 ?
-    `<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Marks</th><th>%</th><th>Score /3</th><th>Grade</th><th></th></tr></thead><tbody>${html}</tbody></table></div><p style="color:#6B7680;margin-top:10px;">Average: ${avg}%</p>` :
-    '<div class="empty-state">No marks entered yet.</div>';
-
-  const hasMarks = learnersWithMarks.length > 0;
-  $('downloadAssessmentPdfBtn').disabled = !hasMarks;
-  $('printAssessmentBtn').disabled = !hasMarks;
-}
-
-// ========== ANALYTICS ==========
-function computeOverallScores() {
-  const classLearners = getClassLearners();
-  const classAssessments = getClassAssessments();
-  const results = [];
-  classLearners.forEach(l => {
-    let weightedSum = 0;
-    let weightTotal = 0;
-    classAssessments.forEach(a => {
-      const m = marks[`${a.id}-${l.id}`];
-      if (m !== undefined) {
-        const pct = (m / a.total) * 100;
-        weightedSum += pct * a.weight;
-        weightTotal += a.weight;
-      }
-    });
-    if (weightTotal > 0) {
-      results.push({ id: l.id, name: l.name, overall: weightedSum / weightTotal });
+  $('createClassBtn').addEventListener('click', createClassHandler);
+  $('deleteClassBtn').addEventListener('click', deleteClassHandler);
+  $('existingClassSelect').addEventListener('change', (e) => {
+    const id = Number(e.target.value);
+    if (id && classes.some(c => c.id === id)) {
+      currentClassId = id;
+      localStorage.setItem('currentClassId', id);
+      updateAllUI();
     }
   });
-  return results;
-}
 
-function renderAnalytics() {
-  const scores = computeOverallScores();
-  const values = scores.map(s => s.overall);
-  const count = values.length;
-  const avg = count ? values.reduce((a, b) => a + b, 0) / count : 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const median = count ? (count % 2 === 1 ? sorted[(count - 1) / 2] : (sorted[count / 2 - 1] + sorted[count / 2]) / 2) : 0;
-  const high = count ? Math.max(...values) : 0;
-  const low = count ? Math.min(...values) : 0;
-  const variance = count ? values.reduce((sum, v) => sum + Math.pow(v - avg, 2), 0) / count : 0;
-  const stdDev = Math.sqrt(variance);
-
-  $('statCount').textContent = getClassLearners().length;
-  $('statAvg').textContent = `${avg.toFixed(1)}%`;
-  $('statMedian').textContent = `${median.toFixed(1)}%`;
-  $('statHigh').textContent = `${high.toFixed(1)}%`;
-  $('statLow').textContent = `${low.toFixed(1)}%`;
-  $('statStdDev').textContent = stdDev.toFixed(1);
-
-  renderPerformanceChart(scores);
-  renderGradeDistributionChart(scores);
-
-  const hasData = scores.length > 0;
-  $('generatePdfReport').disabled = !hasData;
-  $('exportAllCsvBtn').disabled = getClassLearners().length === 0;
-  $('printReport').disabled = !hasData;
-}
-
-function renderPerformanceChart(scores) {
-  const ctx = document.getElementById('performanceChart').getContext('2d');
-  const labels = scores.map(s => s.name);
-  const data = scores.map(s => Number(s.overall.toFixed(1)));
-  if (performanceChartInstance) performanceChartInstance.destroy();
-  performanceChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Overall %',
-        data,
-        backgroundColor: NAVY,
-        borderRadius: 4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true, max: 100 } }
-    }
+  $('addLearnerBtn').addEventListener('click', addLearnerHandler);
+  $('editSelectedBtn').addEventListener('click', () => {
+    const selected = $$('.learner-checkbox:checked');
+    if (selected.length === 1) editLearner(selected[0].value);
   });
-}
-
-function renderGradeDistributionChart(scores) {
-  const ctx = document.getElementById('gradeDistributionChart').getContext('2d');
-  const bands = BANDS.cbc;
-  const counts = bands.map(b => 0);
-  scores.forEach(s => {
-    const band = bandFor(s.overall, 'cbc');
-    const idx = bands.findIndex(b => b.label === band.label);
-    if (idx >= 0) counts[idx]++;
-  });
-  if (gradeDistChartInstance) gradeDistChartInstance.destroy();
-  gradeDistChartInstance = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: bands.map(b => b.label),
-      datasets: [{
-        data: counts,
-        backgroundColor: bands.map(b => b.color)
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } }
-    }
-  });
-}
-
-function exportAllCsv() {
-  const classLearners = getClassLearners();
-  const classAssessments = getClassAssessments();
-  if (classLearners.length === 0) return;
-  const cls = getCurrentClass();
-  let header = ['Student ID', 'Full Name', ...classAssessments.map(a => `${a.title} (%)`), 'Overall (%)'];
-  let csv = header.join(',') + '\n';
-  const scores = computeOverallScores();
-  classLearners.forEach(l => {
-    const row = [l.id, `"${l.name.replace(/"/g, '""')}"`];
-    classAssessments.forEach(a => {
-      const m = marks[`${a.id}-${l.id}`];
-      row.push(m !== undefined ? ((m / a.total) * 100).toFixed(1) : '');
-    });
-    const overallEntry = scores.find(s => s.id === l.id);
-    row.push(overallEntry ? overallEntry.overall.toFixed(1) : '');
-    csv += row.join(',') + '\n';
-  });
-  downloadFile(csv, `${cls ? cls.code : 'class'}_full_report.csv`, 'text/csv');
-}
-
-// ========== PDF GENERATION ==========
-function pdfHeader(doc, title, subtitle) {
-  doc.setFillColor(27, 42, 74);
-  doc.rect(0, 0, doc.internal.pageSize.getWidth(), 28, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(14);
-  doc.text(SCHOOL_NAME, 14, 12);
-  doc.setFontSize(11);
-  doc.text(title, 14, 20);
-  if (subtitle) {
-    doc.setFontSize(9);
-    doc.text(subtitle, 14, 26);
-  }
-  doc.setTextColor(0, 0, 0);
-}
-
-function pdfFooter(doc, className) {
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    const h = doc.internal.pageSize.getHeight();
-    const w = doc.internal.pageSize.getWidth();
-    doc.setFontSize(8);
-    doc.setTextColor(107, 118, 128);
-    doc.text(`${SCHOOL_NAME} | ${className || ''}`, 14, h - 8);
-    doc.text(`Page ${i} of ${pageCount}`, w - 30, h - 8);
-    doc.setTextColor(0, 0, 0);
-  }
-}
-
-function generateAssessmentPdf(assessId) {
-  const assess = assessments.find(a => a.id === assessId);
-  if (!assess) return;
-  const cls = getCurrentClass();
-  const classLearners = getClassLearners();
-  const rows = classLearners
-    .filter(l => marks[`${assessId}-${l.id}`] !== undefined)
-    .map(l => {
-      const m = marks[`${assessId}-${l.id}`];
-      const pct = ((m / assess.total) * 100).toFixed(1);
-      const band = bandFor(pct, assess.scale);
-      const out3 = scoreOutOf3(m, assess.total);
-      return [l.id, l.name, `${m} / ${assess.total}`, `${pct}%`, `${out3} / 3`, band.label];
-    });
-
-  if (rows.length === 0) {
-    alert('No marks have been entered for this assessment yet.');
-    return;
-  }
-
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  pdfHeader(doc, `${assess.title} — Results`, cls ? `${cls.name} [${cls.code}] | Type: ${assess.type} | Total: ${assess.total} | Weight: ${assess.weight}%` : '');
-  doc.autoTable({
-    startY: 34,
-    head: [['ID', 'Name', 'Score', '%', 'Score /3', 'Grade']],
-    body: rows,
-    headStyles: { fillColor: [27, 42, 74] },
-    alternateRowStyles: { fillColor: [247, 249, 248] },
-    styles: { fontSize: 9 }
-  });
-  pdfFooter(doc, cls ? cls.name : '');
-  doc.save(`${cls ? cls.code : 'class'}_${assess.title.replace(/\s+/g, '_')}_results.pdf`);
-}
-
-function downloadCurrentAssessmentPdf() {
-  if (currentMarksAssessmentId) generateAssessmentPdf(currentMarksAssessmentId);
-}
-
-function printCurrentAssessment() {
-  if (!currentMarksAssessmentId) return;
-  const assess = assessments.find(a => a.id === currentMarksAssessmentId);
-  if (!assess) return;
-  const content = $('marksSummaryWrap').innerHTML;
-  openPrintWindow(`${assess.title} — Results`, content);
-}
-
-function printAnalyticsReport() {
-  const cls = getCurrentClass();
-  const scores = computeOverallScores();
-  const rows = scores.map(s => `<tr><td>${escapeHtml(s.name)}</td><td>${s.overall.toFixed(1)}%</td><td>${bandFor(s.overall, 'cbc').label}</td></tr>`).join('');
-  const content = `
-    <p>Learners: ${getClassLearners().length}</p>
-    <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;">
-      <thead><tr><th>Name</th><th>Overall %</th><th>Grade</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-  openPrintWindow(`${cls ? cls.name : 'Class'} — Analytics Report`, content);
-}
-
-function openPrintWindow(title, innerHtml) {
-  const w = window.open('', '_blank');
-  w.document.write(`
-    <html><head><title>${title}</title>
-    <style>
-      body{font-family:Arial,sans-serif;padding:20px;color:#1A1A1A;}
-      h1{color:#1B2A4A;font-size:18px;}
-      table{width:100%;border-collapse:collapse;font-size:13px;}
-      th,td{border:1px solid #ddd;padding:8px;text-align:left;}
-      th{background:#1B2A4A;color:white;}
-    </style>
-    </head><body><h1>${title}</h1>${innerHtml}</body></html>
-  `);
-  w.document.close();
-  w.focus();
-  setTimeout(() => w.print(), 300);
-}
-
-function generateFullPdfReport() {
-  const cls = getCurrentClass();
-  const classLearners = getClassLearners();
-  const classAssessments = getClassAssessments();
-  const scores = computeOverallScores();
-  if (scores.length === 0) {
-    alert('No marks recorded yet for this class.');
-    return;
-  }
-
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  pdfHeader(doc, 'Class Performance Report', cls ? `${cls.name} [${cls.code}] | Teacher: ${cls.teacher || '—'}` : '');
-
-  const values = scores.map(s => s.overall);
-  const avg = values.reduce((a, b) => a + b, 0) / values.length;
-  const sorted = [...values].sort((a, b) => a - b);
-  const median = values.length % 2 === 1 ? sorted[(values.length - 1) / 2] : (sorted[values.length / 2 - 1] + sorted[values.length / 2]) / 2;
-  const high = Math.max(...values);
-  const low = Math.min(...values);
-
-  doc.setFontSize(10);
-  doc.text(`Learners: ${classLearners.length}   Average: ${avg.toFixed(1)}%   Median: ${median.toFixed(1)}%   Highest: ${high.toFixed(1)}%   Lowest: ${low.toFixed(1)}%`, 14, 38);
-
-  const rows = classLearners.map(l => {
-    const entry = scores.find(s => s.id === l.id);
-    const perAssess = classAssessments.map(a => {
-      const m = marks[`${a.id}-${l.id}`];
-      return m !== undefined ? `${((m / a.total) * 100).toFixed(0)}%` : '—';
-    });
-    const overall = entry ? `${entry.overall.toFixed(1)}%` : '—';
-    const grade = entry ? bandFor(entry.overall, 'cbc').label : '—';
-    return [l.id, l.name, ...perAssess, overall, grade];
-  });
-
-  doc.autoTable({
-    startY: 44,
-    head: [['ID', 'Name', ...classAssessments.map(a => a.title), 'Overall', 'Grade']],
-    body: rows,
-    headStyles: { fillColor: [27, 42, 74] },
-    alternateRowStyles: { fillColor: [247, 249, 248] },
-    styles: { fontSize: 8 }
-  });
-  pdfFooter(doc, cls ? cls.name : '');
-  doc.save(`${cls ? cls.code : 'class'}_performance_report.pdf`);
-}
-
-// ========== DATA MANAGEMENT ==========
-function backupData() {
-  const data = { classes, currentClassId, learners, assessments, marks, classCounters, individualReports };
-  downloadFile(JSON.stringify(data, null, 2), `lms_backup_${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
-  flashSuccess('dataMsg', 'Backup downloaded.');
-}
-
-async function restoreData(file) {
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (!data.classes || !data.learners || !data.assessments) throw new Error('Invalid backup file');
-      
-      // We'll restore by upserting all data
-      for (const cls of data.classes || []) {
-        await saveClass(cls);
-      }
-      for (const learner of data.learners || []) {
-        await saveLearner(learner);
-      }
-      for (const assessment of data.assessments || []) {
-        await saveAssessment(assessment);
-      }
-      for (const [key, mark] of Object.entries(data.marks || {})) {
-        const [assessmentId, learnerId] = key.split('-');
-        await saveMark(assessmentId, learnerId, mark);
-      }
-      for (const [classId, lastNumber] of Object.entries(data.classCounters || {})) {
-        await saveClassCounter(Number(classId), lastNumber);
-      }
-      for (const [learnerId, subjects] of Object.entries(data.individualReports || {})) {
-        await saveIndividualReport(learnerId, subjects);
-      }
-      
-      // Reload data
-      await loadAllData();
-      renderClasses();
-      renderLearners();
-      renderAssessments();
-      hideEnterMarksCard();
-      renderAnalytics();
-      updateGlobalButtons();
-      flashSuccess('dataMsg', 'Data restored successfully from backup.');
-    } catch (err) {
-      alert('Could not read this backup file. Please make sure it is a valid LMS backup JSON.');
-    }
-  };
-  reader.readAsText(file);
-}
-
-async function resetAllData() {
-  if (!confirm('This will permanently erase ALL classes, learners, assessments, and marks from the cloud database. Continue?')) return;
-  if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
-  
-  try {
-    // Delete all data from all tables
-    await supabase.from('marks').delete().neq('assessment_id', '');
-    await supabase.from('individual_reports').delete().neq('learner_id', '');
-    await supabase.from('class_counters').delete().neq('class_id', 0);
-    await supabase.from('assessments').delete().neq('id', '');
-    await supabase.from('learners').delete().neq('id', '');
-    await supabase.from('classes').delete().neq('id', 0);
-    
-    classes = [];
-    currentClassId = null;
-    learners = [];
-    assessments = [];
-    marks = {};
-    classCounters = {};
-    individualReports = {};
-    currentReportLearnerId = null;
-    reportSubjects = [];
-    localStorage.removeItem('currentClassId');
-    
-    renderClasses();
-    renderLearners();
-    renderAssessments();
-    hideEnterMarksCard();
-    renderAnalytics();
-    updateGlobalButtons();
-    flashSuccess('dataMsg', 'All data has been reset.');
-  } catch (e) {
-    console.error('Error resetting data:', e);
-    alert('Error resetting data. Please try again.');
-  }
-}
-
-function updateGlobalButtons() {
-  updateButtons();
-}
-
-// ========== INDIVIDUAL REPORT GENERATOR ==========
-function populateReportLearnerSelect() {
-  const sel = $('reportLearnerSelect');
-  const list = getClassLearners();
-  sel.innerHTML = '<option value="">-- Select a learner --</option>' +
-    list.map(l => `<option value="${l.id}" ${l.id === currentReportLearnerId ? 'selected' : ''}>${escapeHtml(l.name)} (${l.id})</option>`).join('');
-}
-
-function selectReportLearner(id) {
-  currentReportLearnerId = id || null;
-  reportSubjects = currentReportLearnerId ? (individualReports[currentReportLearnerId] || []).slice() : [];
-  lastIndividualReport = null;
-  renderSubjectRows();
-  $('individualReportSummaryWrap').innerHTML = '';
-  $('downloadIndividualReportPdfBtn').disabled = true;
-  $('printIndividualReportBtn').disabled = true;
-}
-
-async function saveReportSubjects() {
-  if (!currentReportLearnerId) return;
-  individualReports[currentReportLearnerId] = reportSubjects;
-  try {
-    await saveIndividualReport(currentReportLearnerId, reportSubjects);
-  } catch (e) {
-    console.error('Error saving report subjects:', e);
-  }
-}
-
-function addSubjectRow() {
-  if (!currentReportLearnerId) { alert('Please select a learner first.'); return; }
-  reportSubjects.push({
-    id: 'sub' + Date.now() + Math.random().toString(36).slice(2, 6),
-    name: '', type: 'principal', marks: '', total: 100
-  });
-  saveReportSubjects();
-  renderSubjectRows();
-}
-
-function updateSubjectField(rowId, field, value) {
-  const row = reportSubjects.find(r => r.id === rowId);
-  if (!row) return;
-  row[field] = value;
-  saveReportSubjects();
-}
-
-function removeSubjectRow(rowId) {
-  reportSubjects = reportSubjects.filter(r => r.id !== rowId);
-  saveReportSubjects();
-  renderSubjectRows();
-}
-
-function renderSubjectRows() {
-  const wrap = $('subjectRowsWrap');
-  if (!currentReportLearnerId) {
-    wrap.innerHTML = '<div class="empty-state">Select a learner to begin adding subjects.</div>';
-    return;
-  }
-  if (reportSubjects.length === 0) {
-    wrap.innerHTML = '<div class="empty-state">No subjects added yet. Click "+ Add Subject" below.</div>';
-    return;
-  }
-  wrap.innerHTML = reportSubjects.map(r => `
-    <div class="grid-4" style="align-items:flex-end;margin-bottom:12px;">
-      <div>
-        <label>Subject</label>
-        <input type="text" value="${escapeHtml(r.name)}" placeholder="e.g. History" oninput="updateSubjectField('${r.id}','name', this.value)">
-      </div>
-      <div>
-        <label>Type</label>
-        <select onchange="updateSubjectField('${r.id}','type', this.value)">
-          <option value="principal" ${r.type === 'principal' ? 'selected' : ''}>Principal Subject</option>
-          <option value="subsidiary" ${r.type === 'subsidiary' ? 'selected' : ''}>General Paper / Subsidiary ICT</option>
-        </select>
-      </div>
-      <div>
-        <label>Marks obtained</label>
-        <input type="number" min="0" value="${r.marks}" oninput="updateSubjectField('${r.id}','marks', this.value)">
-      </div>
-      <div style="display:flex;gap:8px;">
-        <div style="flex:1;">
-          <label>Total marks</label>
-          <input type="number" min="1" value="${r.total}" oninput="updateSubjectField('${r.id}','total', this.value)">
-        </div>
-        <button class="btn small danger" onclick="removeSubjectRow('${r.id}')" title="Remove subject">✕</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-function generateIndividualReport() {
-  if (!currentReportLearnerId) { alert('Please select a learner first.'); return; }
-  const learner = learners.find(l => l.id === currentReportLearnerId);
-  if (!learner) return;
-  const validSubjects = reportSubjects.filter(r =>
-    r.name.trim() && r.marks !== '' && !isNaN(Number(r.marks)) && Number(r.total) > 0
-  );
-  if (validSubjects.length === 0) {
-    alert('Please add at least one subject with a name, marks obtained, and total marks.');
-    return;
-  }
-
-  const results = validSubjects.map(r => ({ ...r, ...computeSubjectGrade(r) }));
-  const principals = results.filter(r => r.type === 'principal');
-  const principalPoints = principals.reduce((sum, r) => sum + r.point, 0);
-  const principalMax = principals.length * 5;
-
-  const rowsHtml = results.map(r => `
-    <tr>
-      <td>${escapeHtml(r.name)}</td>
-      <td>${r.type === 'principal' ? 'Principal' : 'GP / Subsidiary'}</td>
-      <td>${r.marks} / ${r.total}</td>
-      <td>${r.pct.toFixed(1)}%</td>
-      <td>${r.point !== null ? r.point : '—'}</td>
-      <td><span class="grade-pill" style="background:${r.grade === 'F' ? RED : GREEN}">${r.grade}</span></td>
-    </tr>
-  `).join('');
-
-  $('individualReportSummaryWrap').innerHTML = `
-    <div class="table-wrapper">
-      <table>
-        <thead><tr><th>Subject</th><th>Type</th><th>Marks</th><th>%</th><th>Points</th><th>Grade</th></tr></thead>
-        <tbody>${rowsHtml}</tbody>
-      </table>
-    </div>
-    <p style="color:#6B7680;margin-top:10px;">Total Principal Points: <strong style="color:${NAVY}">${principalPoints} / ${principalMax}</strong></p>
-  `;
-
-  lastIndividualReport = { learner, results, principalPoints, principalMax, date: $('reportDate').value };
-  $('downloadIndividualReportPdfBtn').disabled = false;
-  $('printIndividualReportBtn').disabled = false;
-}
-
-function downloadIndividualReportPdf() {
-  if (!lastIndividualReport) return;
-  const { learner, results, principalPoints, principalMax, date } = lastIndividualReport;
-  const cls = getCurrentClass();
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  pdfHeader(
-    doc,
-    'Individual Learner Report',
-    `${cls ? `${cls.name} [${cls.code}] | ` : ''}Learner: ${learner.name} (${learner.id})${date ? ' | Date: ' + date : ''}`
-  );
-  const rows = results.map(r => [
-    r.name,
-    r.type === 'principal' ? 'Principal' : 'GP/Subsidiary',
-    `${r.marks} / ${r.total}`,
-    `${r.pct.toFixed(1)}%`,
-    r.point !== null ? String(r.point) : '—',
-    r.grade
-  ]);
-  doc.autoTable({
-    startY: 34,
-    head: [['Subject', 'Type', 'Marks', '%', 'Points', 'Grade']],
-    body: rows,
-    headStyles: { fillColor: [27, 42, 74] },
-    alternateRowStyles: { fillColor: [247, 249, 248] },
-    styles: { fontSize: 9 }
-  });
-  const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) || 40;
-  doc.setFontSize(10);
-  doc.text(`Total Principal Points: ${principalPoints} / ${principalMax}`, 14, finalY + 10);
-  pdfFooter(doc, cls ? cls.name : '');
-  doc.save(`${learner.id}_${learner.name.replace(/\s+/g, '_')}_individual_report.pdf`);
-}
-
-function printIndividualReport() {
-  if (!lastIndividualReport) return;
-  const { learner } = lastIndividualReport;
-  const content = $('individualReportSummaryWrap').innerHTML;
-  openPrintWindow(`Individual Report — ${learner.name} (${learner.id})`, content);
-}
-
-// ========== TABS ==========
-function switchTab(tabName) {
-  $$('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
-  $$('.tab-content').forEach(tc => tc.style.display = 'none');
-  $(`tab-${tabName}`).style.display = 'block';
-  if (tabName === 'analytics') renderAnalytics();
-  if (tabName === 'report') populateReportLearnerSelect();
-}
-
-// ========== INIT ==========
-function attachEventListeners() {
-  $('createClassBtn').addEventListener('click', createOrSwitchClass);
-  $('existingClassSelect').addEventListener('change', (e) => switchToClassId(e.target.value));
-  $('deleteClassBtn').addEventListener('click', deleteCurrentClass);
-
-  $('addLearnerBtn').addEventListener('click', addLearner);
-  $('searchBox').addEventListener('input', () => renderLearners());
-  $('sortBy').addEventListener('change', () => renderLearners());
-  $('editSelectedBtn').addEventListener('click', editSelectedLearner);
   $('deleteSelectedBtn').addEventListener('click', deleteSelectedLearners);
   $('exportLearnersCsvBtn').addEventListener('click', exportLearnersCsv);
+  $('searchBox').addEventListener('input', renderLearnersTable);
+  $('sortBy').addEventListener('change', renderLearnersTable);
 
-  $('closeEditModal').addEventListener('click', closeEditModal);
-  $('saveEditBtn').addEventListener('click', saveLearnerEdit);
-  $('editModal').addEventListener('click', (e) => { if (e.target.id === 'editModal') closeEditModal(); });
+  $('closeEditModal').addEventListener('click', () => {
+    $('editModal').classList.remove('show');
+  });
+  $('saveEditBtn').addEventListener('click', saveEditHandler);
 
-  $('createAssessmentBtn').addEventListener('click', createAssessment);
-  $('saveMarkBtn').addEventListener('click', saveMark);
-  $('downloadAssessmentPdfBtn').addEventListener('click', downloadCurrentAssessmentPdf);
-  $('printAssessmentBtn').addEventListener('click', printCurrentAssessment);
+  $$('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      $$('.tab-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      const tab = e.target.dataset.tab;
+      $$('.tab-content').forEach(t => t.style.display = 'none');
+      $(`tab-${tab}`).style.display = 'block';
+      if (tab === 'analytics') updateAnalytics();
+    });
+  });
 
-  $('generatePdfReport').addEventListener('click', generateFullPdfReport);
-  $('exportAllCsvBtn').addEventListener('click', exportAllCsv);
-  $('printReport').addEventListener('click', printAnalyticsReport);
+  $('createAssessmentBtn').addEventListener('click', createAssessmentHandler);
+  $('saveMarkBtn').addEventListener('click', saveMarkHandler);
+  $('printAssessmentBtn').addEventListener('click', printAssessmentMarks);
+  $('downloadAssessmentPdfBtn').addEventListener('click', downloadAssessmentPdf);
 
-  $('reportLearnerSelect').addEventListener('change', (e) => selectReportLearner(e.target.value));
+  $('generatePdfReport').addEventListener('click', generatePdfReport);
+  $('exportAllCsvBtn').addEventListener('click', exportAllDataCsv);
+  $('printReport').addEventListener('click', printReport);
+
+  $('reportLearnerSelect').addEventListener('change', handleReportLearnerChange);
   $('addSubjectRowBtn').addEventListener('click', addSubjectRow);
-  $('generateIndividualReportBtn').addEventListener('click', generateIndividualReport);
+  $('generateIndividualReportBtn').addEventListener('click', generateIndividualReportHandler);
   $('downloadIndividualReportPdfBtn').addEventListener('click', downloadIndividualReportPdf);
   $('printIndividualReportBtn').addEventListener('click', printIndividualReport);
 
   $('backupBtn').addEventListener('click', backupData);
-  $('restoreBtn').addEventListener('click', () => $('fileInput').click());
-  $('fileInput').addEventListener('change', (e) => {
-    if (e.target.files.length > 0) restoreData(e.target.files[0]);
-    e.target.value = '';
-  });
+  $('restoreBtn').addEventListener('click', restoreData);
+  $('fileInput').addEventListener('change', handleFileUpload);
   $('resetBtn').addEventListener('click', resetAllData);
-
-  $$('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
-}
-
-async function init() {
-  attachEventListeners();
-  const ok = initSupabase();
-  if (!ok) {
-    renderClasses();
-    renderLearners();
-    renderAssessments();
-    renderAnalytics();
-    updateGlobalButtons();
-    return;
-  }
-  
-  const loaded = await loadAllData();
-  if (loaded) {
-    renderClasses();
-    renderLearners();
-    renderAssessments();
-    renderAnalytics();
-    updateGlobalButtons();
-  }
-}
-
-document.addEventListener('DOMContentLoaded', init);
+});
 </script>
 </body>
 </html>
