@@ -3,7 +3,7 @@ const SUPABASE_URL = "https://dsbvxsqgehlomcrofakh.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_JXTHmcLJVoi3IOIQsCAtYA_AoAHA56n";
 
 // ========== SUPABASE CLIENT ==========
-let supabase = null;
+let supabaseClient = null;
 let supabaseReady = false;
 let saveTimer = null;
 
@@ -166,7 +166,7 @@ function initSupabase() {
     return false;
   }
   try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     supabaseReady = true;
     return true;
   } catch (e) {
@@ -178,7 +178,7 @@ function initSupabase() {
 
 async function deleteMultiple(table, column, values) {
   if (!supabaseReady || values.length === 0) return;
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from(table)
     .delete()
     .in(column, values);
@@ -186,8 +186,8 @@ async function deleteMultiple(table, column, values) {
 }
 
 async function saveClass(classObj) {
-  if (!supabaseReady) return;
-  const { data, error } = await supabase
+  if (!supabaseReady) return classObj;
+  const { data, error } = await supabaseClient
     .from('classes')
     .upsert(classObj, { onConflict: 'id' })
     .select();
@@ -196,8 +196,8 @@ async function saveClass(classObj) {
 }
 
 async function saveLearner(learnerObj) {
-  if (!supabaseReady) return;
-  const { data, error } = await supabase
+  if (!supabaseReady) return learnerObj;
+  const { data, error } = await supabaseClient
     .from('learners')
     .upsert(learnerObj, { onConflict: 'id' })
     .select();
@@ -206,8 +206,8 @@ async function saveLearner(learnerObj) {
 }
 
 async function saveAssessment(assessmentObj) {
-  if (!supabaseReady) return;
-  const { data, error } = await supabase
+  if (!supabaseReady) return assessmentObj;
+  const { data, error } = await supabaseClient
     .from('assessments')
     .upsert(assessmentObj, { onConflict: 'id' })
     .select();
@@ -217,7 +217,7 @@ async function saveAssessment(assessmentObj) {
 
 async function saveMarkRecord(assessmentId, learnerId, mark) {
   if (!supabaseReady) return;
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('marks')
     .upsert({ assessment_id: assessmentId, learner_id: learnerId, mark: mark }, { onConflict: 'assessment_id, learner_id' })
     .select();
@@ -227,7 +227,7 @@ async function saveMarkRecord(assessmentId, learnerId, mark) {
 
 async function saveClassCounter(classId, lastNumber) {
   if (!supabaseReady) return;
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('class_counters')
     .upsert({ class_id: classId, last_number: lastNumber }, { onConflict: 'class_id' })
     .select();
@@ -237,7 +237,7 @@ async function saveClassCounter(classId, lastNumber) {
 
 async function saveIndividualReport(learnerId, subjects) {
   if (!supabaseReady) return;
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('individual_reports')
     .upsert({ learner_id: learnerId, level: 'alevel', subjects: subjects }, { onConflict: 'learner_id' })
     .select();
@@ -265,28 +265,28 @@ async function loadAllData() {
   showCloudStatus('Loading data from Supabase...');
 
   try {
-    const { data: classesData, error: classesError } = await supabase
+    const { data: classesData, error: classesError } = await supabaseClient
       .from('classes')
       .select('*')
       .order('id');
     if (classesError) throw classesError;
     classes = classesData || [];
 
-    const { data: learnersData, error: learnersError } = await supabase
+    const { data: learnersData, error: learnersError } = await supabaseClient
       .from('learners')
       .select('*')
       .order('name');
     if (learnersError) throw learnersError;
     learners = learnersData || [];
 
-    const { data: assessmentsData, error: assessmentsError } = await supabase
+    const { data: assessmentsData, error: assessmentsError } = await supabaseClient
       .from('assessments')
       .select('*')
-      .order('created_at');
+      .order('id');
     if (assessmentsError) throw assessmentsError;
     assessments = assessmentsData || [];
 
-    const { data: marksData, error: marksError } = await supabase
+    const { data: marksData, error: marksError } = await supabaseClient
       .from('marks')
       .select('*');
     if (marksError) throw marksError;
@@ -295,7 +295,7 @@ async function loadAllData() {
       marks[`${m.assessment_id}-${m.learner_id}`] = m.mark;
     });
 
-    const { data: countersData, error: countersError } = await supabase
+    const { data: countersData, error: countersError } = await supabaseClient
       .from('class_counters')
       .select('*');
     if (countersError) throw countersError;
@@ -304,7 +304,7 @@ async function loadAllData() {
       classCounters[c.class_id] = c.last_number;
     });
 
-    const { data: reportsData, error: reportsError } = await supabase
+    const { data: reportsData, error: reportsError } = await supabaseClient
       .from('individual_reports')
       .select('*');
     if (reportsError) throw reportsError;
@@ -821,7 +821,7 @@ async function saveMark() {
 async function deleteMark(assessId, learnerId) {
   if (!supabaseReady) return;
   try {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('marks')
       .delete()
       .eq('assessment_id', assessId)
@@ -1188,12 +1188,12 @@ async function restoreData(file) {
       showCloudStatus('Restoring data from backup...');
 
       // Clear existing data from Supabase
-      await supabase.from('marks').delete().neq('assessment_id', '');
-      await supabase.from('individual_reports').delete().neq('learner_id', '');
-      await supabase.from('class_counters').delete().neq('class_id', 0);
-      await supabase.from('assessments').delete().neq('id', '');
-      await supabase.from('learners').delete().neq('id', '');
-      await supabase.from('classes').delete().neq('id', 0);
+      await supabaseClient.from('marks').delete().neq('assessment_id', '');
+      await supabaseClient.from('individual_reports').delete().neq('learner_id', '');
+      await supabaseClient.from('class_counters').delete().neq('class_id', 0);
+      await supabaseClient.from('assessments').delete().neq('id', '');
+      await supabaseClient.from('learners').delete().neq('id', '');
+      await supabaseClient.from('classes').delete().neq('id', 0);
 
       // Restore classes
       for (const cls of data.classes || []) {
@@ -1257,12 +1257,12 @@ async function resetAllData() {
   try {
     showCloudStatus('Resetting all data...');
     
-    await supabase.from('marks').delete().neq('assessment_id', '');
-    await supabase.from('individual_reports').delete().neq('learner_id', '');
-    await supabase.from('class_counters').delete().neq('class_id', 0);
-    await supabase.from('assessments').delete().neq('id', '');
-    await supabase.from('learners').delete().neq('id', '');
-    await supabase.from('classes').delete().neq('id', 0);
+    await supabaseClient.from('marks').delete().neq('assessment_id', '');
+    await supabaseClient.from('individual_reports').delete().neq('learner_id', '');
+    await supabaseClient.from('class_counters').delete().neq('class_id', 0);
+    await supabaseClient.from('assessments').delete().neq('id', '');
+    await supabaseClient.from('learners').delete().neq('id', '');
+    await supabaseClient.from('classes').delete().neq('id', 0);
 
     classes = [];
     currentClassId = null;
