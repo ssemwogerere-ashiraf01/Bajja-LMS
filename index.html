@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Learner Management System — Comprehensive High School Bajja</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">Comprehensive High School Bajja — Lukaya</div>
+    <h1>Advanced Learner Management System</h1>
+    <p>Manage classes, assessments, grades, and generate comprehensive reports with analytics.</p>
+  </header>
+
+  <div id="cloudStatus" style="text-align:center;font-size:12px;color:var(--muted);margin:-8px 0 16px;"></div>
+
+  <!-- Class Management -->
+  <div class="card">
+    <h2>Class Management</h2>
+    <div class="grid-3">
+      <div>
+        <label for="className">Class/Stream name</label>
+        <input type="text" id="className" placeholder="e.g. Senior 5A" value="Senior 5A">
+      </div>
+      <div>
+        <label for="classTeacher">Class teacher</label>
+        <input type="text" id="classTeacher" placeholder="e.g. Mr. Mutua">
+      </div>
+      <div>
+        <label for="classCode">Class code (e.g. S1, S2, ..., S6)</label>
+        <input type="text" id="classCode" placeholder="e.g. S5" value="S5">
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:12px;">
+      <div style="display:flex;align-items:flex-end;gap:10px;">
+        <button class="btn" id="createClassBtn" style="flex:1;justify-content:center;">Create/Switch Class</button>
+      </div>
+      <div style="display:flex;align-items:center;">
+        <span class="badge" id="currentClassBadge">No class selected</span>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:12px;">
+      <div>
+        <label for="existingClassSelect">Switch to an existing class</label>
+        <select id="existingClassSelect">
+          <option value="">-- Select a class --</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end;">
+        <button class="btn danger" id="deleteClassBtn" style="width:100%;justify-content:center;">Delete Current Class</button>
+      </div>
+    </div>
+    <div class="hint">Switch between classes to manage different streams or year groups. The class code determines the ID prefix (e.g., S1 → S101, S102…). If you type a class code that already exists, "Create/Switch Class" will switch to it instead of creating a duplicate.</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-tab="learners">Learner Management</button>
+    <button class="tab-btn" data-tab="assessments">Assessments</button>
+    <button class="tab-btn" data-tab="analytics">Analytics & Reports</button>
+    <button class="tab-btn" data-tab="report">Individual Report</button>
+  </div>
+
+  <!-- ===== LEARNER MANAGEMENT TAB ===== -->
+  <div id="tab-learners" class="tab-content">
+
+    <!-- Add Learner -->
+    <div class="card">
+      <h2>Add Learner</h2>
+      <div class="grid-3">
+        <div>
+          <label for="studentIdDisplay">Student ID (auto‑generated)</label>
+          <div class="auto-id" id="studentIdDisplay">— <span id="nextIdPreview">(no class)</span></div>
+        </div>
+        <div>
+          <label for="learnerName">Full name</label>
+          <input type="text" id="learnerName" placeholder="e.g. Nakato Sarah">
+        </div>
+        <div>
+          <label for="email">Email (optional)</label>
+          <input type="email" id="email" placeholder="student@school.ug">
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top:12px;">
+        <div>
+          <label for="dateEnrolled">Date enrolled</label>
+          <input type="date" id="dateEnrolled">
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <button class="btn" id="addLearnerBtn" style="width:100%;justify-content:center;">Add Learner</button>
+        </div>
+      </div>
+      <div class="err" id="formErr"></div>
+      <div class="success" id="addSuccess" style="display:none;"></div>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="card">
+      <h3>Search & Filter</h3>
+      <div class="filter-row">
+        <input type="text" class="search-box" id="searchBox" placeholder="Search by name or ID...">
+        <select id="sortBy">
+          <option value="name">Sort by name</option>
+          <option value="id">Sort by ID</option>
+          <option value="joined">Sort by joined date</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Learners Table -->
+    <div class="card">
+      <h2>Learner Register</h2>
+      <div id="learnersTableWrap">
+        <div class="empty-state">No learners added yet. Create a class and add learners above.</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn secondary" id="editSelectedBtn" disabled>Edit Selected</button>
+        <button class="btn danger" id="deleteSelectedBtn" disabled>Delete Selected</button>
+        <button class="btn secondary" id="exportLearnersCsvBtn" disabled>Export as CSV</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== ASSESSMENTS TAB ===== -->
+  <div id="tab-assessments" class="tab-content" style="display:none;">
+
+    <!-- Create Assessment -->
+    <div class="card">
+      <h2>Create Assessment</h2>
+      <div class="grid-4">
+        <div>
+          <label for="assessmentTitle">Assessment title</label>
+          <input type="text" id="assessmentTitle" placeholder="e.g. CAT 1">
+        </div>
+        <div>
+          <label for="assessmentType">Type</label>
+          <select id="assessmentType">
+            <option value="cat">Class Assessment (CAT)</option>
+            <option value="quiz">Quiz</option>
+            <option value="midterm">Midterm</option>
+            <option value="final">Final Exam</option>
+          </select>
+        </div>
+        <div>
+          <label for="totalMarks">Total marks</label>
+          <input type="number" id="totalMarks" min="1" value="60">
+        </div>
+        <div>
+          <label for="weight">Weight %</label>
+          <input type="number" id="weight" min="0" max="100" value="20">
+        </div>
+      </div>
+      <div class="grid-3" style="margin-top:12px;">
+        <div>
+          <label for="dueDate">Due date</label>
+          <input type="date" id="dueDate">
+        </div>
+        <div>
+          <label for="gradeScale">Grading scale</label>
+          <select id="gradeScale">
+            <option value="cbc">CBC Descriptor</option>
+            <option value="uce">UCE (D1–F9)</option>
+            <option value="letter">Letter (A–F)</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <button class="btn" id="createAssessmentBtn" style="width:100%;justify-content:center;">Create Assessment</button>
+        </div>
+      </div>
+      <div class="err" id="assessmentErr"></div>
+    </div>
+
+    <!-- Assessments List -->
+    <div class="card">
+      <h2>Active Assessments</h2>
+      <div id="assessmentsListWrap">
+        <div class="empty-state">No assessments created yet.</div>
+      </div>
+    </div>
+
+    <!-- Enter Marks -->
+    <div class="card" id="enterMarksCard" style="display:none;">
+      <h2>Enter Marks — <span id="marksAssessmentTitle"></span></h2>
+      <div class="grid-3">
+        <div>
+          <label for="marksLearner">Learner</label>
+          <select id="marksLearner"></select>
+        </div>
+        <div>
+          <label for="marksObtained">Marks obtained</label>
+          <input type="number" id="marksObtained" min="0">
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <button class="btn" id="saveMarkBtn" style="width:100%;justify-content:center;">Save Mark</button>
+        </div>
+      </div>
+      <div class="err" id="markErr"></div>
+      <div class="success" id="markSuccess" style="display:none;"></div>
+      <h3 style="margin-top:20px;">Marks Summary</h3>
+      <div id="marksSummaryWrap"></div>
+      <div class="btn-row">
+        <button class="btn" id="downloadAssessmentPdfBtn" disabled>Download PDF</button>
+        <button class="btn secondary" id="printAssessmentBtn" disabled>Print</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== ANALYTICS TAB ===== -->
+  <div id="tab-analytics" class="tab-content" style="display:none;">
+
+    <!-- Statistics -->
+    <div class="card">
+      <h2>Class Statistics <span style="font-weight:400;text-transform:none;color:var(--muted);">(overall weighted performance)</span></h2>
+      <div class="summary-grid">
+        <div class="summary-box">
+          <div class="val" id="statCount">0</div>
+          <div class="lab">Learners</div>
+        </div>
+        <div class="summary-box">
+          <div class="val" id="statAvg">0%</div>
+          <div class="lab">Average</div>
+        </div>
+        <div class="summary-box">
+          <div class="val" id="statMedian">0%</div>
+          <div class="lab">Median</div>
+        </div>
+        <div class="summary-box">
+          <div class="val" id="statHigh">0%</div>
+          <div class="lab">Highest</div>
+        </div>
+        <div class="summary-box">
+          <div class="val" id="statLow">0%</div>
+          <div class="lab">Lowest</div>
+        </div>
+        <div class="summary-box">
+          <div class="val" id="statStdDev">0</div>
+          <div class="lab">Std Dev</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="card">
+      <h2>Performance Visualization</h2>
+      <div class="chart-container">
+        <canvas id="performanceChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Grade Distribution -->
+    <div class="card">
+      <h2>Grade Distribution</h2>
+      <div class="chart-container">
+        <canvas id="gradeDistributionChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Export Reports -->
+    <div class="card">
+      <h2>Generate Reports</h2>
+      <div class="btn-row">
+        <button class="btn" id="generatePdfReport" disabled>Download PDF Report</button>
+        <button class="btn secondary" id="exportAllCsvBtn" disabled>Export All Data (CSV)</button>
+        <button class="btn secondary" id="printReport" disabled>Print Report</button>
+      </div>
+      <div class="hint">Generate detailed class reports with statistics and individual learner breakdowns.</div>
+    </div>
+
+  </div>
+
+  <!-- ===== INDIVIDUAL REPORT TAB ===== -->
+  <div id="tab-report" class="tab-content" style="display:none;">
+
+    <div class="card">
+      <h2>Individual Learner Report</h2>
+      <div class="grid-2">
+        <div>
+          <label for="reportLearnerSelect">Learner</label>
+          <select id="reportLearnerSelect"></select>
+        </div>
+        <div>
+          <label for="reportDate">Report date</label>
+          <input type="date" id="reportDate">
+        </div>
+      </div>
+      <div class="hint">Select a learner, then add each A-Level subject with the marks obtained and the total marks for that assessment. Principal subjects are graded 0–5 points (A–F). General Paper and Subsidiary ICT are graded A (above Basic) or F (Basic and below).</div>
+    </div>
+
+    <div class="card">
+      <h3>Subjects</h3>
+      <div id="subjectRowsWrap">
+        <div class="empty-state">Select a learner to begin adding subjects.</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn secondary small" id="addSubjectRowBtn">+ Add Subject</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="btn-row" style="margin-top:0;">
+        <button class="btn" id="generateIndividualReportBtn">Generate Report</button>
+      </div>
+      <div id="individualReportSummaryWrap" style="margin-top:16px;"></div>
+      <div class="btn-row">
+        <button class="btn" id="downloadIndividualReportPdfBtn" disabled>Download PDF</button>
+        <button class="btn secondary" id="printIndividualReportBtn" disabled>Print</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Data Management -->
+  <div class="card">
+    <h2>Data Management</h2>
+    <div class="btn-row">
+      <button class="btn secondary" id="backupBtn">Backup Data</button>
+      <button class="btn secondary" id="restoreBtn">Restore Data</button>
+      <button class="btn danger" id="resetBtn">Reset All</button>
+      <input type="file" id="fileInput" accept="application/json" style="display:none;">
+    </div>
+    <div class="hint">All data is now stored permanently in your Supabase cloud database and will be there whenever you reopen this app, on any device. Use <b>Backup Data</b> to download a local JSON snapshot for safekeeping, and <b>Restore Data</b> to overwrite the cloud database from a backup file.</div>
+    <div class="success" id="dataMsg" style="display:none;margin-top:10px;"></div>
+  </div>
+
+  <div class="footer-note">Comprehensive High School Bajja — Advanced Learning Management System v2.0</div>
+</div>
+
+<!-- Edit Learner Modal -->
+<div class="modal" id="editModal">
+  <div class="modal-content">
+    <div class="modal-header">Edit Learner</div>
+    <div style="margin-bottom:14px;">
+      <label for="editStudentId">Student ID</label>
+      <input type="text" id="editStudentId" disabled>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label for="editLearnerName">Full name</label>
+      <input type="text" id="editLearnerName">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label for="editEmail">Email</label>
+      <input type="email" id="editEmail">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label for="editComment">Comment/Notes</label>
+      <textarea id="editComment" placeholder="Add notes about this learner..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn secondary" id="closeEditModal">Cancel</button>
+      <button class="btn" id="saveEditBtn">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+</body>
+</html>
